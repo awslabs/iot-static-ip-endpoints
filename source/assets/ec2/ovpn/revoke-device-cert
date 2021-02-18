@@ -1,0 +1,33 @@
+#!/bin/bash
+
+#
+# Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You may not use 
+# this file except in compliance with the License. A copy of the License is located at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# or in the "license" file accompanying this file. This file is distributed on an "AS IS" 
+# BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the 
+# License for the specific language governing permissions and limitations under the License.
+#
+
+export CLIENT_NAME=$1
+
+# OpenVPN client name gets passed in from Lambda. Sanitize the input...
+# clean out anything that's not alphanumeric or an underscore
+CLIENT_NAME=${CLIENT_NAME// /_} # spaces to underscore
+CLIENT_NAME=${CLIENT_NAME//[^a-zA-Z0-9:_-]/} # same as IoT core validations
+[ "${#CLIENT_NAME}" -eq 0 ] &&  (echo "Invalid client name, must be at least one characters long";  exit 1) # min 1
+[ "${#CLIENT_NAME}" -ge 129 ] && (echo "Invalid client name, must not be longer than 128 characters long"; exit 1) # max 128
+
+export OVPN_DATA="/mnt/efs/fs1/ovpn_data"
+cd $OVPN_DATA
+source $OVPN_DATA/vars
+
+echo yes | /usr/share/easy-rsa/3/easyrsa revoke "$CLIENT_NAME"
+echo "Generating the Certificate Revocation List :"
+/usr/share/easy-rsa/3/easyrsa gen-crl
+cp $OVPN_DATA/pki/crl.pem $OVPN_DATA/crl.pem
+chmod 644 "$OVPN_DATA/crl.pem"

@@ -1,0 +1,69 @@
+#!/bin/bash -e
+
+#
+# Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You may not use 
+# this file except in compliance with the License. A copy of the License is located at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# or in the "license" file accompanying this file. This file is distributed on an "AS IS" 
+# BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the 
+# License for the specific language governing permissions and limitations under the License.
+#
+
+export CLIENT_NAME=$1
+export CSR=$2
+
+# Thing name gets passed in from Lambda. Sanitize the input.
+# clean out anything that's not alphanumeric or an underscore
+THING_NAME=${CLIENT_NAME// /_} # spaces to underscore
+THING_NAME=${CLIENT_NAME//[^a-zA-Z0-9:_-]/} # same as IoT core validations
+[ "${#CLIENT_NAME}" -eq 0 ] &&  (echo "Invalid client name, must be at least one characters long";  exit 1) # min 1
+[ "${#CLIENT_NAME}" -ge 129 ] && (echo "Invalid client name, must not be longer than 128 characters long"; exit 1) # max 128
+
+export OVPN_DATA="/mnt/efs/fs1/ovpn_data"
+cd $OVPN_DATA
+source $OVPN_DATA/vars
+
+if [ -f ${OVPN_DATA}/pki/reqs/$THING_NAME.req ]; then
+    echo "Device already has a certificate, revoke first."
+    exit 1
+fi
+
+echo "${CSR}" > ${OVPN_DATA}/pki/reqs/$THING_NAME.req
+echo "yes" | /usr/share/easy-rsa/3/easyrsa sign-req client $THING_NAME nopass > /dev/null
+
+CERT=$(openssl x509 -in $OVPN_DATA/pki/issued/${THING_NAME}.crt)
+CA=$(cat $OVPN_DATA/pki/ca.crt)
+TA=$(cat $OVPN_DATA/pki/ta.key)
+
+echo "
+client
+nobind
+dev tun
+remote-cert-tls server
+remote ${PRIMARY_IP} ${TUNNEL_PORT} ${TUNNEL_PROTOCOL}
+remote ${SECONDARY_IP} ${TUNNEL_PORT} ${TUNNEL_PROTOCOL}
+<key>
+REPLACE_WITH_PRIVATE_KEY_PEM
+</key>
+<cert>
+$CERT
+</cert>
+<ca>
+$CA
+</ca>
+key-direction 1
+<tls-auth>
+$TA
+</tls-auth>
+# By default the 'redirect-gateway def1' statement will route ALL traffic via the VPN. To route traffic
+# to the default gateway (net_gateway), uncomment the 'route' command and replace the network and subnet
+# mask. Example below routes 10.0.0.0/24 via the default gateway.
+# NOTE: You have multiple route statements as needed.
+;route 10.0.0.0 255.255.255.0 net_gateway
+redirect-gateway def1
+"
+

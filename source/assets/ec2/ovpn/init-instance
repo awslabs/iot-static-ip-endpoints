@@ -1,0 +1,274 @@
+#!/bin/bash -xeE
+
+#
+# Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You may not use 
+# this file except in compliance with the License. A copy of the License is located at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# or in the "license" file accompanying this file. This file is distributed on an "AS IS" 
+# BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the 
+# License for the specific language governing permissions and limitations under the License.
+#
+
+# if the script fails at any point - signal (which will fast-fail the cloudformation deployment)
+function signal-fail {
+    echo "Failed"
+    /opt/aws/bin/cfn-signal --success=false --resource=$AUTO_SCALING_GROUP --stack=$STACK_NAME --region=$REGION
+}
+trap 'signal-fail' ERR
+
+# sanity checks
+function assert-envvar {
+    if [ -z "${!1}" ]; then
+        echo "Missing $1 environment variable"
+        signal-fail
+        exit 1
+    fi
+}
+assert-envvar FILE_SYSTEM_ID
+assert-envvar DNSIP1
+assert-envvar CIDR
+assert-envvar TUNNEL_PROTOCOL
+assert-envvar TUNNEL_PORT
+assert-envvar NLBIP1
+assert-envvar NLBIP2
+assert-envvar LOG_GROUP_NAME_MESSAGES
+assert-envvar LOG_GROUP_NAME_CIO
+assert-envvar LOG_GROUP_NAME_OPENVPN
+assert-envvar LOG_GROUP_NAME_YUM
+assert-envvar AUTO_SCALING_GROUP
+assert-envvar STACK_NAME
+assert-envvar KEEPALIVE
+
+# Calculated variables
+TUNNEL_PROTOCOL=$(echo "$TUNNEL_PROTOCOL" | tr '[:upper:]' '[:lower:]')
+EFS_MOUNT_POINT=/mnt/efs/fs1
+AVAILABILITY_ZONE=$(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone)
+REGION=$(echo "$AVAILABILITY_ZONE" | sed 's/[a-z]$//')
+PRIMARY_IP=$NLBIP1
+SECONDARY_IP=$NLBIP2
+
+# if GA IP's were passed, they're the primary/secondary
+test -z "$GAIP1" && PRIMARY_IP=$NLBIP1 || PRIMARY_IP=$GAIP1
+test -z "$GAIP2" && SECONDARY_IP=$NLBIP2 || SECONDARY_IP=$GAIP2
+
+# Install awslogs
+yum -y install awslogs
+
+echo "
+[plugins]
+cwlogs = cwlogs
+[default]
+region = $REGION
+" > /etc/awslogs/awscli.conf
+
+# awslogs config
+echo "
+[general]
+state_file = /etc/awslogs/agent-state
+
+[messages]
+file = /var/log/messages
+log_group_name = ${LOG_GROUP_NAME_MESSAGES}
+log_stream_name = {instance_id}
+datetime_format = %b %d %H:%M:%S
+
+[cloud-init-output]
+log_group_name = ${LOG_GROUP_NAME_CIO}
+log_stream_name = {instance_id}
+file = /var/log/cloud-init-output.log
+
+[openvpn]
+log_group_name = ${LOG_GROUP_NAME_OPENVPN}
+log_stream_name = {instance_id}
+file = /var/log/openvpn.log
+
+[yum]
+log_group_name = ${LOG_GROUP_NAME_YUM}
+log_stream_name = {instance_id}
+file = /var/log/yum.log
+" > /etc/awslogs/awslogs.conf
+
+# Install and start awslogs
+systemctl start awslogsd
+systemctl enable awslogsd.service
+
+# Updates and Installs
+yum check-update -y || echo "no updates"
+yum upgrade -y || echo "no upgrade"
+yum -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm || echo "epel repo already installed"
+yum-config-manager --enable epel || echo "epel repo already installed and activated"
+yum -y install jq amazon-efs-utils nfs-utils openvpn easy-rsa socat yum-cron
+alias openvpn=/usr/sbin/openvpn
+
+# yum-cron security updates
+sed -i.bak 's/update_cmd = default/update_cmd = security/' /etc/yum/yum-cron.conf
+sed -i.bak 's/apply_updates = no/apply_updates = yes/' /etc/yum/yum-cron.conf
+systemctl start yum-cron
+systemctl enable yum-cron
+
+# EFS Mount
+# EFS mount points can take time to resolve to AZs. Loop and wait up to 3 minutes for resolution
+n=0
+while :
+do
+    REGION=$(curl --silent http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r .region)
+    if [[ $(dig +short ${FILE_SYSTEM_ID}.efs.${REGION}.amazonaws.com) != "" ]]
+    then
+        break
+    else
+        if [[ "$n" -ge 60 ]]
+        then
+            signal-fail
+            exit 1
+        fi
+        echo "waiting for EFS to be presented"
+    fi
+    n=$((n+1))
+    sleep 10
+done
+
+mkdir -p /mnt/efs/fs1
+test -z "$(cat /etc/fstab | grep ${EFS_MOUNT_POINT})" && echo "${FILE_SYSTEM_ID}:/ ${EFS_MOUNT_POINT} efs _netdev,tls" >> /etc/fstab
+
+# Prior to mounting the NFS share, pause until the mount point is fully accessible
+# https://docs.aws.amazon.com/efs/latest/ug/mounting-fs-mount-cmd-dns-name.html
+while :
+do
+    if [[ $(df -h | grep ${EFS_MOUNT_POINT}) == "" ]]
+    then
+        mount -a -t efs,nfs4 _netdev,tls || error=true
+        if [[ $error ]]
+        then
+            sleep 5
+        else
+            break
+        fi
+        echo "waiting for EFS to mount"
+    else
+        break
+    fi
+done
+
+# Write OpenVPN Config
+# These values are curated for ECC algorithms
+OVPN_DATA=/mnt/efs/fs1/ovpn_data
+mkdir -p $OVPN_DATA
+F=${OVPN_DATA}/openvpn.conf
+echo "
+server 198.18.0.0 255.255.0.0
+verb 4
+ca ${OVPN_DATA}/pki/ca.crt
+key ${OVPN_DATA}/pki/private/$PRIMARY_IP.key
+cert ${OVPN_DATA}/pki/issued/$PRIMARY_IP.crt
+dh none
+tls-auth ${OVPN_DATA}/pki/ta.key
+tls-version-min 1.2
+
+#data channel cipher
+cipher AES-128-GCM
+ncp-disable #do not negotiate ciphers, we know what we want
+# TLS 1.3 encryption settings
+tls-ciphersuites TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256
+# TLS 1.2 encryption settings
+tls-cipher TLS-ECDHE-ECDSA-WITH-CHACHA20-POLY1305-SHA256:TLS-ECDHE-RSA-WITH-CHACHA20-POLY1305-SHA256:TLS-ECDHE-ECDSA-WITH-AES-128-GCM-SHA256:TLS-ECDHE-RSA-WITH-AES-128-GCM-SHA256
+dh none #disable static Diffie-Hellman parameters since using ECDHE
+ecdh-curve secp384r1 #use the NSAs recommended curve
+tls-server #this tells OpenVPN which side of the TLS handshake it is
+
+crl-verify ${OVPN_DATA}/crl.pem
+key-direction 0
+keepalive ${KEEPALIVE} 60
+persist-key
+persist-tun
+proto $TUNNEL_PROTOCOL
+port 1194
+dev tun0
+status /var/log/openvpn-status.log
+log /var/log/openvpn.log
+user nobody
+group nobody
+comp-lzo no
+push \"block-outside-dns\"
+push \"comp-lzo no\"
+push \"cipher AES-128-GCM\"
+push \"route ${CIDR}\"
+push \"dhcp-option DNS ${DNSIP1}\"
+" > $F
+
+# Store vars for certificate generation scripts to use later
+echo "#!/bin/bash -xe
+export PRIMARY_IP=$PRIMARY_IP
+export SECONDARY_IP=$SECONDARY_IP
+export TUNNEL_PROTOCOL=$TUNNEL_PROTOCOL
+export TUNNEL_PORT=$TUNNEL_PORT
+export EASYRSA_ALGO=\"ec\"
+export EASYRSA_CURVE=\"secp521r1\"
+export EASYRSA_DIGEST=\"sha512\""> $OVPN_DATA/vars
+
+# First-time initializations
+if [ ! -f $OVPN_DATA/.initialized ]; then
+    if [ ! -f $OVPN_DATA/.initializing ]; then
+        touch $OVPN_DATA/.initializing
+        echo "Initializing PKI..."
+        cd $OVPN_DATA
+        /usr/share/easy-rsa/3/easyrsa init-pki
+        echo "MyCA" | /usr/share/easy-rsa/3/easyrsa --days=$CA_DAYS build-ca nopass
+        # TODO: remove gen-dh if ECC works
+        # /usr/share/easy-rsa/3/easyrsa gen-dh
+        openvpn --genkey --secret pki/ta.key
+        /usr/share/easy-rsa/3/easyrsa --subject-alt-name="DNS:${SECONDARY_IP}" build-server-full "$PRIMARY_IP" nopass
+        /usr/share/easy-rsa/3/easyrsa gen-crl
+        touch $OVPN_DATA/.initialized
+    else
+        # wait for another server to complete PKI
+        echo "Waiting for PKI initialization to complete..."
+        while [ ! -f $OVPN_DATA/.initialized ]; do
+            sleep 5
+            echo "Waiting for PKI initialization to complete..."
+        done
+    fi
+fi
+
+# OpenVPN log rotation
+echo "/var/log/openvpn.log {
+    daily
+    copytruncate
+    rotate 3
+    compress
+}
+" > /etc/logrotate.d/openvpn.conf
+
+
+# Routing/NAT
+echo 1 > /proc/sys/net/ipv4/ip_forward
+iptables -t nat -C POSTROUTING -s 198.18.0.0/16 -o eth0 -j MASQUERADE || {
+    iptables -t nat -A POSTROUTING -s 198.18.0.0/16 -o eth0 -j MASQUERADE
+}
+iptables -t nat -C POSTROUTING -s ${CIDR} -o eth0 -j MASQUERADE || {
+    iptables -t nat -A POSTROUTING -s ${CIDR} -o eth0 -j MASQUERADE
+}
+
+# when the tunnel is a UDP type, we need to use socat for the TCP health checks
+if [[ "$TUNNEL_PROTOCOL" == "udp" ]]; then
+    chmod +x /usr/share/tcp-health-check
+    nohup socat -u tcp-l:1195,fork system:/usr/share/tcp-health-check > /dev/null &
+fi
+
+# Start OpenVPN
+mkdir -p /dev/net
+if [ ! -c /dev/net/tun ]; then
+    mknod /dev/net/tun c 10 200
+fi
+cp $OVPN_DATA/pki/crl.pem $OVPN_DATA/crl.pem
+chmod 644 "$OVPN_DATA/crl.pem"
+nohup openvpn --config $OVPN_DATA/openvpn.conf &
+OVPN_PID=$!
+echo $OVPN_PID > /etc/openvpn.pid
+
+# signal that we're healthy now.
+/opt/aws/bin/cfn-signal --success=true --resource=$AUTO_SCALING_GROUP --stack=$STACK_NAME --region=$REGION
+echo "Done"

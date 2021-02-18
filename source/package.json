@@ -1,0 +1,54 @@
+{
+  "name": "iot-static-ip-endpoints",
+  "version": "1.0.0",
+  "license": "Apache-2.0",
+  "bin": {
+    "cdk-solution": "bin/app.js"
+  },
+  "scripts": {
+    "cleanup": "tsc --build ./ --clean && rm -rf node_modules && rm -f package-lock.json",
+    "clean": "rm -rf coverage/ lib/*.js lib/*.d.ts bin/*.js bin/*.d.ts test/*.js test/*.d.ts test/*.synth.json",
+    "build": "tsc",
+    "watch": "tsc -w",
+    "test": "jest",
+    "cdk": "cdk",
+    "lint": "npx eslint --max-warnings=0 .",
+    "full-build": "npx eslint && npm run build && npm run test && cdk synth",
+    "full-build-prod": "npm run build && cdk synth",
+    "check": "npm run build && cdk synth",
+    "configure": "node configure.js",
+    "nag": "npm run build && cdk synth > iot-static-ip-endpoints.yaml && cfn_nag iot-static-ip-endpoints.yaml"
+  },
+  "devDependencies": {
+    "@aws-cdk/assert": "1.x",
+    "@types/jest": "26.x",
+    "@types/node": "14.x",
+    "@typescript-eslint/eslint-plugin": "4.x",
+    "@typescript-eslint/parser": "4.x",
+    "aws-cdk": "1.x",
+    "eslint": "7.x",
+    "jest": "26.x",
+    "source-map-support": "0.x",
+    "ts-jest": "26.x",
+    "ts-node": "9.x",
+    "typescript": "4.x"
+  },
+  "dependencies": {
+    "@aws-cdk/aws-autoscaling": "1.x",
+    "@aws-cdk/aws-ec2": "1.x",
+    "@aws-cdk/aws-elasticloadbalancingv2": "1.x",
+    "@aws-cdk/aws-events-targets": "1.x",
+    "@aws-cdk/aws-globalaccelerator": "1.x",
+    "@aws-cdk/aws-lambda": "1.x",
+    "@aws-cdk/aws-s3": "1.x",
+    "@aws-cdk/core": "1.x",
+    "@aws-cdk/custom-resources": "1.x",
+    "aws-sdk": "2.x"
+  },
+  "prettier": {
+    "tabWidth": 2,
+    "semi": false,
+    "printWidth": 150,
+    "trailingComma": "none"
+  }
+}
