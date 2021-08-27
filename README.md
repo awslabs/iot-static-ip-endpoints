@@ -6,6 +6,8 @@ Through the deployment of an OpenVPN server cluster, IoT devices in remote locat
 
 This repository is the same code base used to generate the AWS CloudFormation templates and assets, and uses the [AWS Cloud Development Kit (CDK)](https://aws.amazon.com/cdk/) to build and deploy the stack.
 
+> This solution collects anonymous operational metrics to help AWS improve the quality of features of the solution. For more information, including how to disable this capability, please see the [implementation guide](_https://docs.aws.amazon.com/solutions/latest/<solution-trademark-name>/collection-of-operational-metrics.html_).
+
 # Getting Started
 
 To get started with the IoT Static IP Endpoints Solution, please review the solution documentation. https://aws.amazon.com/answers/iot/iot-static-ip-endpoints/
