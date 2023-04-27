@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not use
  * this file except in compliance with the License. A copy of the License is located at
@@ -11,17 +11,18 @@
  * License for the specific language governing permissions and limitations under the License.
  **/
 
-import { Duration, CfnParameter, Construct, Fn, Tags } from "@aws-cdk/core"
-import { SecurityGroup, CfnSecurityGroupIngress, InstanceType, MachineImageConfig, OperatingSystemType, UserData } from "@aws-cdk/aws-ec2"
-import { ManagedPolicy, PolicyStatement, Effect } from "@aws-cdk/aws-iam"
-import { IMetric, Unit, Metric } from "@aws-cdk/aws-cloudwatch"
+import { Duration, CfnParameter, Fn, Tags } from "aws-cdk-lib/core"
+import { SecurityGroup, CfnSecurityGroupIngress, InstanceType, MachineImageConfig, OperatingSystemType, UserData } from "aws-cdk-lib/aws-ec2"
+import { ManagedPolicy, PolicyStatement, Effect } from "aws-cdk-lib/aws-iam"
+import { IMetric, Unit, Metric } from "aws-cdk-lib/aws-cloudwatch"
 import { NLBService } from "./NLBService"
 import { SolutionVpc } from "./SolutionVpc"
 import { createParameter } from "./Utils"
-import { AutoScalingGroup, CfnAutoScalingGroup, AdjustmentType, BlockDeviceVolume, Monitoring, ScalingEvents } from "@aws-cdk/aws-autoscaling"
+import { AutoScalingGroup, CfnAutoScalingGroup, AdjustmentType, BlockDeviceVolume, Monitoring, ScalingEvents } from "aws-cdk-lib/aws-autoscaling"
 import { Logs } from "./Logs"
-import { Topic } from "@aws-cdk/aws-sns"
+import { Topic } from "aws-cdk-lib/aws-sns"
 import { CustomResourcesProvider } from "./CustomResourcesProvider"
+import { Construct } from "constructs"
 
 export interface CpuScalingOptions {
   /** The period used for the CloudWatch metrics */
@@ -133,15 +134,15 @@ export class NLBEC2Service extends Construct {
       groupId: sg.securityGroupId,
       ipProtocol: "TCP",
       cidrIp: props.vpc.vpcCidrBlock, // only allow health checks from the NLB
-      toPort: (props.nlbService.healthCheckPort as unknown) as number,
-      fromPort: (props.nlbService.healthCheckPort as unknown) as number,
+      toPort: props.nlbService.healthCheckPort as unknown as number,
+      fromPort: props.nlbService.healthCheckPort as unknown as number,
       description: "Health Checks"
     })
 
     props.peers.forEach((peer) => {
       new CfnSecurityGroupIngress(this, "VPNIngress", {
         groupId: sg.securityGroupId,
-        ipProtocol: (Fn.conditionIf(props.nlbService.config.isUdp.logicalId, "UDP", "TCP") as unknown) as string,
+        ipProtocol: Fn.conditionIf(props.nlbService.config.isUdp.logicalId, "UDP", "TCP") as unknown as string,
         cidrIp: peer,
         toPort: props.backendPort,
         fromPort: props.backendPort,
@@ -157,7 +158,7 @@ export class NLBEC2Service extends Construct {
     const imageId = this.config.instanceAmiParam.valueAsString
 
     const asg = new AutoScalingGroup(this, "Asg", {
-      instanceType: (this.config.instanceTypeParam.valueAsString as unknown) as InstanceType,
+      instanceType: this.config.instanceTypeParam.valueAsString as unknown as InstanceType,
       vpc: props.vpc,
       vpcSubnets: { subnets: props.vpc.internetRoutableSubnets },
       instanceMonitoring: Monitoring.DETAILED,
@@ -213,7 +214,7 @@ export class NLBEC2Service extends Construct {
     Logs.allowLoggingForRole(asg.role)
 
     // cfn-signal
-    asg.role.addToPolicy(
+    asg.role.addToPrincipalPolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
         actions: ["cloudformation:SignalResource"],
@@ -233,7 +234,7 @@ export class NLBEC2Service extends Construct {
     const hcgpRes = props.cfnprovider.create(this, "UpdateHealthCheck", "UpdateHealthCheck", {
       AutoScalingGroupName: asg.autoScalingGroupName
     })
-    hcgpRes.addDependsOn(aAsg)
+    hcgpRes.addDependency(aAsg)
 
     return asg
   }
@@ -260,7 +261,7 @@ export class NLBEC2Service extends Construct {
       period: period,
       statistic: "Average",
       unit: Unit.PERCENT,
-      dimensions: { AutoScalingGroupName: asg.autoScalingGroupName }
+      dimensionsMap: { AutoScalingGroupName: asg.autoScalingGroupName }
     })
   }
 }

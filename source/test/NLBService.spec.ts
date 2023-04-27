@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not use
  * this file except in compliance with the License. A copy of the License is located at
@@ -11,22 +11,21 @@
  * License for the specific language governing permissions and limitations under the License.
  **/
 
-import * as cdk from "@aws-cdk/core"
-import { SynthUtils } from "@aws-cdk/assert"
-import "@aws-cdk/assert/jest"
+import * as cdk from "aws-cdk-lib/core"
 import * as fs from "fs"
 import * as mock from "./Mock"
+import { Template } from "aws-cdk-lib/assertions"
 
 const scope = new cdk.Stack()
 const cfnprovider = mock.cfnprovider(scope)
 const vpc = mock.vpc(scope, cfnprovider)
 mock.nlb(scope, vpc, cfnprovider)
-const stack = SynthUtils.toCloudFormation(scope)
+const stack = Template.fromStack(scope)
 fs.writeFileSync("test/NLBService.synth.json", JSON.stringify(stack, null, 2))
 
 test("has a single network load balancer configured as expected", () => {
-  expect(stack).toCountResources("AWS::ElasticLoadBalancingV2::LoadBalancer", 1)
-  expect(stack).toHaveResource("AWS::ElasticLoadBalancingV2::LoadBalancer", {
+  stack.resourceCountIs("AWS::ElasticLoadBalancingV2::LoadBalancer", 1)
+  stack.hasResource("AWS::ElasticLoadBalancingV2::LoadBalancer", {
     LoadBalancerAttributes: [{ Key: "load_balancing.cross_zone.enabled", Value: "true" }],
     Scheme: "internet-facing",
     SubnetMappings: [
@@ -48,8 +47,8 @@ test("has a single network load balancer configured as expected", () => {
 })
 
 test("has a single target group configured as expected", () => {
-  expect(stack).toCountResources("AWS::ElasticLoadBalancingV2::TargetGroup", 1)
-  expect(stack).toHaveResource("AWS::ElasticLoadBalancingV2::TargetGroup", {
+  stack.resourceCountIs("AWS::ElasticLoadBalancingV2::TargetGroup", 1)
+  stack.hasResource("AWS::ElasticLoadBalancingV2::TargetGroup", {
     HealthCheckEnabled: true,
     HealthCheckIntervalSeconds: 10,
     HealthCheckPort: {
@@ -77,8 +76,8 @@ test("has a single target group configured as expected", () => {
 })
 
 test("has a single listener configured as expected", () => {
-  expect(stack).toCountResources("AWS::ElasticLoadBalancingV2::Listener", 1)
-  expect(stack).toHaveResource("AWS::ElasticLoadBalancingV2::Listener", {
+  stack.resourceCountIs("AWS::ElasticLoadBalancingV2::Listener", 1)
+  stack.hasResource("AWS::ElasticLoadBalancingV2::Listener", {
     DefaultActions: [
       {
         TargetGroupArn: {

@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not use
  * this file except in compliance with the License. A copy of the License is located at
@@ -11,14 +11,13 @@
  * License for the specific language governing permissions and limitations under the License.
  **/
 
-import * as cdk from "@aws-cdk/core"
-import { SynthUtils } from "@aws-cdk/assert"
-import "@aws-cdk/assert/jest"
+import * as cdk from "aws-cdk-lib/core"
 import { IoTStaticEndpointsStack } from "../lib/IoTStaticEndpointsStack"
+import { Template } from "aws-cdk-lib/assertions"
 
 const scope = new cdk.Stack()
 const _stack = new IoTStaticEndpointsStack(scope, "mystack", {})
-const stack = SynthUtils.toCloudFormation(scope)
+const stack = Template.fromStack(scope)
 
 test("creates the stack", () => {
   expect(_stack).not.toBeNull()

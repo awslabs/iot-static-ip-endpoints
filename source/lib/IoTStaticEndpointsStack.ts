@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not use
  * this file except in compliance with the License. A copy of the License is located at
@@ -17,12 +17,13 @@ import { NLBService } from "./NLBService"
 import { SolutionVpc } from "./SolutionVpc"
 import { NLBGlobalAccelerator } from "./NLBGlobalAccelerator"
 import { IoTStaticEndpointsConfig } from "./IoTStaticEndpointsConfig"
-import { StackProps, Construct, Stack, Duration, Fn } from "@aws-cdk/core"
+import { StackProps, Stack, Duration, Fn } from "aws-cdk-lib/core"
 import { createBasicGraphWidget, createCondition } from "./Utils"
-import * as cloudwatch from "@aws-cdk/aws-cloudwatch"
-import { Topic, Subscription, SubscriptionProtocol } from "@aws-cdk/aws-sns"
+import * as cloudwatch from "aws-cdk-lib/aws-cloudwatch"
+import { Topic, Subscription, SubscriptionProtocol } from "aws-cdk-lib/aws-sns"
 import { AnonymousData } from "./AnonymousData"
 import { CustomResourcesProvider } from "./CustomResourcesProvider"
+import { Construct } from "constructs"
 
 /**
  * @noInheritDoc
@@ -169,7 +170,7 @@ export class IoTStaticEndpointsStack extends Stack {
           statistic: "Average",
           namespace: "AWS/EC2",
           metricName: "CPUUtilization",
-          dimensions: { AutoScalingGroupName: this.vpnService.autoScalingGroup.autoScalingGroupName }
+          dimensionsMap: { AutoScalingGroupName: this.vpnService.autoScalingGroup.autoScalingGroupName }
         })
       ],
       leftAnnotations: leftAnnotations

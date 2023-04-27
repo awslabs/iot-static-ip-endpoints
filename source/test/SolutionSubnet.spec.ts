@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not use
  * this file except in compliance with the License. A copy of the License is located at
@@ -11,21 +11,20 @@
  * License for the specific language governing permissions and limitations under the License.
  **/
 
-import * as cdk from "@aws-cdk/core"
-import { SynthUtils } from "@aws-cdk/assert"
+import * as cdk from "aws-cdk-lib/core"
 import * as mock from "./Mock"
-import "@aws-cdk/assert/jest"
 import * as fs from "fs"
-import * as ec2 from "@aws-cdk/aws-ec2"
+import * as ec2 from "aws-cdk-lib/aws-ec2"
+import { Template } from "aws-cdk-lib/assertions"
 
 const scope = new cdk.Stack()
 const subnet = mock.subnet(scope)
-const stack = SynthUtils.toCloudFormation(scope)
+const stack = Template.fromStack(scope)
 fs.writeFileSync("test/NAT.synth.json", JSON.stringify(stack, null, 2))
 
 test("has expected resource counts", () => {
-  expect(stack).toCountResources("AWS::EC2::Subnet", 1)
-  expect(stack).toCountResources("AWS::EC2::RouteTable", 1)
+  stack.resourceCountIs("AWS::EC2::Subnet", 1)
+  stack.resourceCountIs("AWS::EC2::RouteTable", 1)
 })
 
 test("method overrides work as expected", () => {
@@ -39,7 +38,7 @@ test("method overrides work as expected", () => {
   try {
     console.log(subnet.env)
   } catch (err) {
-    if (err.message !== "Not implemented") {
+    if ((err as any).message !== "Not implemented") {
       throw err
     }
   }
@@ -52,7 +51,7 @@ test("method overrides work as expected", () => {
       })
     )
   } catch (err) {
-    if (err.message !== "Not implemented") {
+    if ((err as any).message !== "Not implemented") {
       throw err
     }
   }

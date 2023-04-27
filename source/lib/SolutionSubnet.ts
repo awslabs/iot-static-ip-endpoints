@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not use
  * this file except in compliance with the License. A copy of the License is located at
@@ -11,8 +11,9 @@
  * License for the specific language governing permissions and limitations under the License.
  **/
 
-import { Stack, ConstructNode, ResourceEnvironment } from "@aws-cdk/core"
-import { ISubnet, CfnSubnet, CfnRouteTable, IRouteTable, INetworkAcl } from "@aws-cdk/aws-ec2"
+import { Stack, ResourceEnvironment, RemovalPolicy } from "aws-cdk-lib/core"
+import { ISubnet, CfnSubnet, CfnRouteTable, IRouteTable, INetworkAcl } from "aws-cdk-lib/aws-ec2"
+import { Node } from "constructs"
 
 export class SolutionSubnet implements ISubnet {
   private readonly cfnSubnet: CfnSubnet
@@ -21,8 +22,12 @@ export class SolutionSubnet implements ISubnet {
 
   constructor(cfnSubnet: CfnSubnet, cfnRouteTable: CfnRouteTable) {
     this.cfnSubnet = cfnSubnet
-    this.ipv4CidrBlock = cfnSubnet.cidrBlock
+    this.ipv4CidrBlock = cfnSubnet.cidrBlock!
     this.cfnRouteTable = cfnRouteTable
+  }
+
+  applyRemovalPolicy(policy: RemovalPolicy): void {
+    this.cfnSubnet.applyRemovalPolicy(policy)
   }
 
   get subnetId(): string {
@@ -39,7 +44,7 @@ export class SolutionSubnet implements ISubnet {
     }
   }
 
-  get node(): ConstructNode {
+  get node(): Node {
     return this.cfnSubnet.node
   }
 

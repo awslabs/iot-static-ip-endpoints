@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not use
  * this file except in compliance with the License. A copy of the License is located at
@@ -11,18 +11,19 @@
  * License for the specific language governing permissions and limitations under the License.
  **/
 
-import * as cdk from "@aws-cdk/core"
-import { CfnMapping } from "@aws-cdk/core"
-import * as iam from "@aws-cdk/aws-iam"
-import * as lambda from "@aws-cdk/aws-lambda"
+import * as cdk from "aws-cdk-lib/core"
+import { CfnMapping } from "aws-cdk-lib/core"
+import * as iam from "aws-cdk-lib/aws-iam"
+import * as lambda from "aws-cdk-lib/aws-lambda"
 import { createCondition, Condition } from "./Utils"
 import { PYTHON_LAMBDA_RUNTIME } from "./Constants"
 import * as path from "path"
 import { Logs } from "./Logs"
-import * as events from "@aws-cdk/aws-events"
-import * as targets from "@aws-cdk/aws-events-targets"
+import * as events from "aws-cdk-lib/aws-events"
+import * as targets from "aws-cdk-lib/aws-events-targets"
 import { CustomResourcesProvider } from "./CustomResourcesProvider"
 import * as constants from "./Constants"
+import { Construct } from "constructs"
 
 export interface AnonymousDataProps {
   readonly autoScalingGroupName: string
@@ -31,8 +32,8 @@ export interface AnonymousDataProps {
   readonly cfnprovider: CustomResourcesProvider
 }
 
-export class AnonymousData extends cdk.Construct {
-  constructor(scope: cdk.Construct, id: string, props: AnonymousDataProps) {
+export class AnonymousData extends Construct {
+  constructor(scope: Construct, id: string, props: AnonymousDataProps) {
     super(scope, id)
 
     // mapping for users to activate/deactivate anonymous usage collection
@@ -95,7 +96,7 @@ export class AnonymousData extends cdk.Construct {
 
     const func = new lambda.Function(this, "AnonymousDataCollector", {
       runtime: PYTHON_LAMBDA_RUNTIME,
-      code: lambda.Code.asset(path.join("assets", "lambda")),
+      code: lambda.Code.fromAsset(path.join("assets", "lambda")),
       handler: "AnonymousDataCollection.handler",
       timeout: cdk.Duration.minutes(5),
       description: `${cdk.Fn.ref("AWS::StackName")} anonymous usage collection`,

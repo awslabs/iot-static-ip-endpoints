@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not use
  * this file except in compliance with the License. A copy of the License is located at
@@ -11,21 +11,20 @@
  * License for the specific language governing permissions and limitations under the License.
  **/
 
-import * as cdk from "@aws-cdk/core"
-import { SynthUtils } from "@aws-cdk/assert"
+import * as cdk from "aws-cdk-lib/core"
 import * as mock from "./Mock"
-import "@aws-cdk/assert/jest"
 import * as fs from "fs"
+import { Template } from "aws-cdk-lib/assertions"
 
 const scope = new cdk.Stack()
 const cfnprovider = mock.cfnprovider(scope)
 const vpc = mock.vpc(scope, cfnprovider)
-const stack = SynthUtils.toCloudFormation(scope)
+const stack = Template.fromStack(scope)
 fs.writeFileSync("test/SolutionVpc.synth.json", JSON.stringify(stack, null, 2))
 
 test("has a single VPC which is configured as expected", () => {
-  expect(stack).toCountResources("AWS::EC2::VPC", 1)
-  expect(stack).toHaveResource("AWS::EC2::VPC", {
+  stack.resourceCountIs("AWS::EC2::VPC", 1)
+  stack.hasResource("AWS::EC2::VPC", {
     CidrBlock: { Ref: "VpcCIDR" },
     EnableDnsHostnames: true,
     EnableDnsSupport: true,
@@ -35,21 +34,21 @@ test("has a single VPC which is configured as expected", () => {
 })
 
 test("has a single internet gateway, and internet gateway attachment", () => {
-  expect(stack).toCountResources("AWS::EC2::InternetGateway", 1)
-  expect(stack).toCountResources("AWS::EC2::VPCGatewayAttachment", 1)
+  stack.resourceCountIs("AWS::EC2::InternetGateway", 1)
+  stack.resourceCountIs("AWS::EC2::VPCGatewayAttachment", 1)
 })
 
 test("vpc has 4 subnets", () => {
-  expect(stack).toCountResources("AWS::EC2::Subnet", 4)
+  stack.resourceCountIs("AWS::EC2::Subnet", 4)
 })
 
 test("vpc has /26 public subnets in 2 availability zones", () => {
-  expect(stack).toHaveResource("AWS::EC2::Subnet", {
+  stack.hasResource("AWS::EC2::Subnet", {
     AvailabilityZone: { Ref: "Zone1" },
     MapPublicIpOnLaunch: true,
     Tags: [{ Key: "Name", Value: { "Fn::Join": ["", [{ Ref: "AWS::StackName" }, "-public1"]] } }]
   })
-  expect(stack).toHaveResource("AWS::EC2::Subnet", {
+  stack.hasResource("AWS::EC2::Subnet", {
     AvailabilityZone: { Ref: "Zone2" },
     MapPublicIpOnLaunch: true,
     Tags: [{ Key: "Name", Value: { "Fn::Join": ["", [{ Ref: "AWS::StackName" }, "-public2"]] } }]
@@ -57,12 +56,12 @@ test("vpc has /26 public subnets in 2 availability zones", () => {
 })
 
 test("vpc has /26 private subnets in 2 availability zones", () => {
-  expect(stack).toHaveResource("AWS::EC2::Subnet", {
+  stack.hasResource("AWS::EC2::Subnet", {
     AvailabilityZone: { Ref: "Zone1" },
     MapPublicIpOnLaunch: false,
     Tags: [{ Key: "Name", Value: { "Fn::Join": ["", [{ Ref: "AWS::StackName" }, "-private1"]] } }]
   })
-  expect(stack).toHaveResource("AWS::EC2::Subnet", {
+  stack.hasResource("AWS::EC2::Subnet", {
     AvailabilityZone: { Ref: "Zone2" },
     MapPublicIpOnLaunch: false,
     Tags: [{ Key: "Name", Value: { "Fn::Join": ["", [{ Ref: "AWS::StackName" }, "-private2"]] } }]
@@ -70,30 +69,30 @@ test("vpc has /26 private subnets in 2 availability zones", () => {
 })
 
 test("has 3 route tables", () => {
-  expect(stack).toCountResources("AWS::EC2::RouteTable", 3)
+  stack.resourceCountIs("AWS::EC2::RouteTable", 3)
 })
 
 test("has public route table", () => {
-  expect(stack).toHaveResource("AWS::EC2::RouteTable", {
+  stack.hasResource("AWS::EC2::RouteTable", {
     Tags: [{ Key: "Name", Value: { "Fn::Join": ["", [{ Ref: "AWS::StackName" }, "-public"]] } }]
   })
 })
 
 test("has private route tables", () => {
-  expect(stack).toHaveResource("AWS::EC2::RouteTable", {
+  stack.hasResource("AWS::EC2::RouteTable", {
     Tags: [{ Key: "Name", Value: { "Fn::Join": ["", [{ Ref: "AWS::StackName" }, "-private1"]] } }]
   })
-  expect(stack).toHaveResource("AWS::EC2::RouteTable", {
+  stack.hasResource("AWS::EC2::RouteTable", {
     Tags: [{ Key: "Name", Value: { "Fn::Join": ["", [{ Ref: "AWS::StackName" }, "-private2"]] } }]
   })
 })
 
 test("has correct number of route table associations", () => {
-  expect(stack).toCountResources("AWS::EC2::SubnetRouteTableAssociation", 4)
+  stack.resourceCountIs("AWS::EC2::SubnetRouteTableAssociation", 4)
 })
 
 test("public route table associated to public subnets", () => {
-  expect(stack).toHaveResource("AWS::EC2::SubnetRouteTableAssociation", {
+  stack.hasResource("AWS::EC2::SubnetRouteTableAssociation", {
     RouteTableId: {
       Ref: "VpcpublicRouteTable84AA4D2D"
     },
@@ -101,7 +100,7 @@ test("public route table associated to public subnets", () => {
       Ref: "VpcPublicSubnet15D99DDA5"
     }
   })
-  expect(stack).toHaveResource("AWS::EC2::SubnetRouteTableAssociation", {
+  stack.hasResource("AWS::EC2::SubnetRouteTableAssociation", {
     RouteTableId: {
       Ref: "VpcpublicRouteTable84AA4D2D"
     },
@@ -112,7 +111,7 @@ test("public route table associated to public subnets", () => {
 })
 
 test("private route tables associated to private subnets", () => {
-  expect(stack).toHaveResource("AWS::EC2::SubnetRouteTableAssociation", {
+  stack.hasResource("AWS::EC2::SubnetRouteTableAssociation", {
     RouteTableId: {
       Ref: "VpcprivateRouteTable1CC524E24"
     },
@@ -120,7 +119,7 @@ test("private route tables associated to private subnets", () => {
       Ref: "VpcPrivateSubnet1C7C9FF92"
     }
   })
-  expect(stack).toHaveResource("AWS::EC2::SubnetRouteTableAssociation", {
+  stack.hasResource("AWS::EC2::SubnetRouteTableAssociation", {
     RouteTableId: {
       Ref: "VpcprivateRouteTable29D4318A6"
     },
@@ -131,7 +130,7 @@ test("private route tables associated to private subnets", () => {
 })
 
 test("public route table has internet route", () => {
-  expect(stack).toHaveResource("AWS::EC2::Route", {
+  stack.hasResource("AWS::EC2::Route", {
     RouteTableId: {
       Ref: "VpcpublicRouteTable84AA4D2D"
     },
@@ -143,31 +142,31 @@ test("public route table has internet route", () => {
 })
 
 test("has EIP resources for NAT Gateways", () => {
-  expect(stack).toHaveResource("AWS::EC2::EIP", {
+  stack.hasResource("AWS::EC2::EIP", {
     Domain: "vpc",
     Tags: [{ Key: "Name", Value: { "Fn::Join": ["", [{ Ref: "AWS::StackName" }, "-NAT1"]] } }]
   })
 
-  expect(stack).toHaveResource("AWS::EC2::EIP", {
+  stack.hasResource("AWS::EC2::EIP", {
     Domain: "vpc",
     Tags: [{ Key: "Name", Value: { "Fn::Join": ["", [{ Ref: "AWS::StackName" }, "-NAT2"]] } }]
   })
 })
 
 test("has NAT Gateway resources in 2 availability zones", () => {
-  expect(stack).toHaveResource("AWS::EC2::NatGateway", {
+  stack.hasResource("AWS::EC2::NatGateway", {
     AllocationId: { "Fn::If": ["AllocateNAT1IP", { "Fn::GetAtt": ["VpcNAT1NAT1EIPFB47460A", "AllocationId"] }, { Ref: "EIPNAT1" }] },
     SubnetId: { Ref: "VpcPublicSubnet15D99DDA5" }
   })
 
-  expect(stack).toHaveResource("AWS::EC2::NatGateway", {
+  stack.hasResource("AWS::EC2::NatGateway", {
     AllocationId: { "Fn::If": ["AllocateNAT2IP", { "Fn::GetAtt": ["VpcNAT2NAT2EIPD6D91F97", "AllocationId"] }, { Ref: "EIPNAT2" }] },
     SubnetId: { Ref: "VpcPublicSubnet2DB07F317" }
   })
 })
 
 test("private route tables contain NAT Gateway routes", () => {
-  expect(stack).toHaveResource("AWS::EC2::Route", {
+  stack.hasResource("AWS::EC2::Route", {
     RouteTableId: {
       Ref: "VpcprivateRouteTable1CC524E24"
     },
@@ -177,7 +176,7 @@ test("private route tables contain NAT Gateway routes", () => {
     }
   })
 
-  expect(stack).toHaveResource("AWS::EC2::Route", {
+  stack.hasResource("AWS::EC2::Route", {
     RouteTableId: {
       Ref: "VpcprivateRouteTable29D4318A6"
     },
@@ -197,7 +196,7 @@ test("method overrides work as expected", () => {
   try {
     console.log(sn.node)
   } catch (err) {
-    if (err.message !== "not implemented") {
+    if ((err as any) !== "not implemented") {
       throw err
     }
   }
@@ -205,7 +204,7 @@ test("method overrides work as expected", () => {
   try {
     console.log(sn.stack)
   } catch (err) {
-    if (err.message !== "not implemented") {
+    if ((err as any) !== "not implemented") {
       throw err
     }
   }
@@ -213,7 +212,7 @@ test("method overrides work as expected", () => {
   try {
     console.log(sn.env)
   } catch (err) {
-    if (err.message !== "not implemented") {
+    if ((err as any) !== "not implemented") {
       throw err
     }
   }
@@ -221,7 +220,7 @@ test("method overrides work as expected", () => {
   try {
     sn.associateNetworkAcl()
   } catch (err) {
-    if (err.message !== "not implemented") {
+    if ((err as any) !== "not implemented") {
       throw err
     }
   }
@@ -229,7 +228,7 @@ test("method overrides work as expected", () => {
   try {
     console.log(sn.routeTable)
   } catch (err) {
-    if (err.message !== "not implemented") {
+    if ((err as any) !== "not implemented") {
       throw err
     }
   }
@@ -251,7 +250,7 @@ test("method overrides work as expected", () => {
   try {
     vpc.selectSubnets({ subnetGroupName: "Public" })
   } catch (err) {
-    if (err.message !== "not implemented") {
+    if ((err as any) !== "not implemented") {
       throw err
     }
   }
@@ -259,7 +258,7 @@ test("method overrides work as expected", () => {
   try {
     vpc.selectSubnets()
   } catch (err) {
-    if (err.message !== "not implemented") {
+    if ((err as any) !== "not implemented") {
       throw err
     }
   }
@@ -267,7 +266,7 @@ test("method overrides work as expected", () => {
   try {
     console.log(vpc.isolatedSubnets)
   } catch (err) {
-    if (err.message !== "vpc.isolatedSubnets Not Implemented") {
+    if ((err as any) !== "vpc.isolatedSubnets Not Implemented") {
       throw err
     }
   }
@@ -275,7 +274,7 @@ test("method overrides work as expected", () => {
   try {
     console.log(vpc.vpnGatewayId)
   } catch (err) {
-    if (err.message !== "vpc.vpnGatewayId Not Implemented") {
+    if ((err as any) !== "vpc.vpnGatewayId Not Implemented") {
       throw err
     }
   }
@@ -283,7 +282,7 @@ test("method overrides work as expected", () => {
   try {
     console.log(vpc.internetConnectivityEstablished)
   } catch (err) {
-    if (err.message !== "vpc.internetConnectivityEstablished Not Implemented") {
+    if ((err as any) !== "vpc.internetConnectivityEstablished Not Implemented") {
       throw err
     }
   }
@@ -291,7 +290,7 @@ test("method overrides work as expected", () => {
   try {
     console.log(vpc.env)
   } catch (err) {
-    if (err.message !== "vpc.env Not Implemented") {
+    if ((err as any) !== "vpc.env Not Implemented") {
       throw err
     }
   }
@@ -299,7 +298,7 @@ test("method overrides work as expected", () => {
   try {
     vpc.enableVpnGateway({ type: "" })
   } catch (err) {
-    if (err.message !== "vpc.enableVpnGateway Not Implemented") {
+    if ((err as any) !== "vpc.enableVpnGateway Not Implemented") {
       throw err
     }
   }
@@ -307,7 +306,7 @@ test("method overrides work as expected", () => {
   try {
     vpc.addVpnConnection("", { ip: "" })
   } catch (err) {
-    if (err.message !== "vpc.addVpnConnection Not Implemented") {
+    if ((err as any) !== "vpc.addVpnConnection Not Implemented") {
       throw err
     }
   }
@@ -315,7 +314,7 @@ test("method overrides work as expected", () => {
   try {
     vpc.addGatewayEndpoint("", { service: { name: "" } })
   } catch (err) {
-    if (err.message !== "vpc.addGatewayEndpoint Not Implemented") {
+    if ((err as any).message !== "vpc.addGatewayEndpoint Not Implemented") {
       throw err
     }
   }
@@ -323,7 +322,7 @@ test("method overrides work as expected", () => {
   try {
     vpc.addInterfaceEndpoint("", { service: { name: "", port: 0 } })
   } catch (err) {
-    if (err.message !== "vpc.addInterfaceEndpoint Not Implemented") {
+    if ((err as any) !== "vpc.addInterfaceEndpoint Not Implemented") {
       throw err
     }
   }
@@ -331,7 +330,7 @@ test("method overrides work as expected", () => {
   try {
     vpc.addFlowLog("", {})
   } catch (err) {
-    if (err.message !== "vpc.addFlowLog Not Implemented") {
+    if ((err as any) !== "vpc.addFlowLog Not Implemented") {
       throw err
     }
   }

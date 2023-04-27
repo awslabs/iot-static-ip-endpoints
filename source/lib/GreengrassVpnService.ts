@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not use
  * this file except in compliance with the License. A copy of the License is located at
@@ -12,18 +12,19 @@
  **/
 
 import * as path from "path"
-import { Construct, CfnParameter, RemovalPolicy, Fn, CfnResource, Duration, CfnOutput, Tags } from "@aws-cdk/core"
-import { SecurityGroup } from "@aws-cdk/aws-ec2"
-import { Role, PolicyStatement, Effect, ServicePrincipal } from "@aws-cdk/aws-iam"
-import { Code } from "@aws-cdk/aws-lambda"
-import * as lambda from "@aws-cdk/aws-lambda"
-import { Asset } from "@aws-cdk/aws-s3-assets"
-import { FileSystem, LifecyclePolicy, PerformanceMode, ThroughputMode } from "@aws-cdk/aws-efs"
+import { CfnParameter, RemovalPolicy, Fn, CfnResource, Duration, CfnOutput, Tags } from "aws-cdk-lib/core"
+import { SecurityGroup } from "aws-cdk-lib/aws-ec2"
+import { Role, PolicyStatement, Effect, ServicePrincipal } from "aws-cdk-lib/aws-iam"
+import { Code } from "aws-cdk-lib/aws-lambda"
+import * as lambda from "aws-cdk-lib/aws-lambda"
+import { Asset } from "aws-cdk-lib/aws-s3-assets"
+import { FileSystem, LifecyclePolicy, PerformanceMode, ThroughputMode } from "aws-cdk-lib/aws-efs"
 import { PYTHON_LAMBDA_RUNTIME } from "./Constants"
 import { NLBEC2Service, NLBEC2ServiceProps } from "./NLBEC2Service"
 import { createCondition, createParameter } from "./Utils"
-import * as logs from "@aws-cdk/aws-logs"
+import * as logs from "aws-cdk-lib/aws-logs"
 import { Logs } from "./Logs"
+import { Construct } from "constructs"
 
 export interface GreengrassVpnServiceConfig {
   readonly caValidDaysParam: CfnParameter
@@ -226,7 +227,7 @@ export class GreengrassVpnService extends NLBEC2Service {
 
     const func = new lambda.Function(this, "CreateDeviceVpnCertificateLambda", {
       runtime: PYTHON_LAMBDA_RUNTIME,
-      code: Code.asset(path.join("assets", "lambda")),
+      code: Code.fromAsset(path.join("assets", "lambda")),
       handler: "CreateDeviceVpnCertificate.handler",
       timeout: Duration.minutes(5),
       description: `${Fn.ref("AWS::StackName")} VPN client config generator`,
@@ -284,7 +285,7 @@ export class GreengrassVpnService extends NLBEC2Service {
 
     const func = new lambda.Function(this, "RevokeDeviceVpnCertificateLambda", {
       runtime: PYTHON_LAMBDA_RUNTIME,
-      code: Code.asset(path.join("assets", "lambda")),
+      code: Code.fromAsset(path.join("assets", "lambda")),
       handler: "RevokeDeviceVpnCertificate.handler",
       timeout: Duration.minutes(5),
       description: `${Fn.ref("AWS::StackName")} VPN client config revocation`,
@@ -317,7 +318,7 @@ export class GreengrassVpnService extends NLBEC2Service {
         }
       ]
     })
-    mf1.addDependsOn(Logs.logGroup(this, "ec2/openvpn"))
+    mf1.addDependency(Logs.logGroup(this, "ec2/openvpn"))
 
     const mf2 = new logs.CfnMetricFilter(this, "ClientDisconnectMetricFilter", {
       // double quotes in the filter pattern are required here
@@ -332,6 +333,6 @@ export class GreengrassVpnService extends NLBEC2Service {
         }
       ]
     })
-    mf2.addDependsOn(Logs.logGroup(this, "ec2/openvpn"))
+    mf2.addDependency(Logs.logGroup(this, "ec2/openvpn"))
   }
 }

@@ -1,18 +1,17 @@
-
-/** 
- * Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+/**
+ * Copyright 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may not use 
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may not use
  * this file except in compliance with the License. A copy of the License is located at
  *
  *     http://aws.amazon.com/apache2.0/
  *
- * or in the "license" file accompanying this file. This file is distributed on an "AS IS" 
- * BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the 
+ * or in the "license" file accompanying this file. This file is distributed on an "AS IS"
+ * BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
  * License for the specific language governing permissions and limitations under the License.
  **/
 
- // Imports
+// Imports
 const fs = require("fs");
 
 // Paths
@@ -37,19 +36,14 @@ function processTemplate(file) {
   iterate("", null, "", template);
 
   // Output modified template file
-  const output_template = JSON.stringify(
-    template,
-    (k, v) => (k !== "__parent" ? v : undefined),
-    2
-  );
+  const output_template = JSON.stringify(template, (k, v) => (k !== "__parent" ? v : undefined), 2);
   fs.writeFileSync(`${global_s3_assets}/${file}`, output_template);
 }
 
 function iterate(path, parent, propNameOrIndex, obj) {
   if (typeof obj === "object" && (propNameOrIndex + "").indexOf("__") !== 0) {
     obj.__parent = parent;
-    if (obj.constructor.name === "Array")
-      obj.forEach((el, i) => iterate(`${path}[${i}]`, obj, i, el));
+    if (obj.constructor.name === "Array") obj.forEach((el, i) => iterate(`${path}[${i}]`, obj, i, el));
     else for (var p in obj) iterate(`${path}.${p}`, obj, p, obj[p]);
   } else {
     if (typeof obj === "string") {
@@ -57,11 +51,7 @@ function iterate(path, parent, propNameOrIndex, obj) {
       if (obj.indexOf("hnb659fds") !== -1) {
         // PolicyDocuments
         if (path.indexOf("PolicyDocument") !== -1) {
-          if (
-            path.indexOf(
-              "PolicyDocument.Statement[2].Resource.Fn::ImportValue"
-            ) !== -1
-          ) {
+          if (path.indexOf("PolicyDocument.Statement[2].Resource.Fn::ImportValue") !== -1) {
             // remove the statement
             parent.__parent.__parent.splice(2, 1);
           } else if (propNameOrIndex === "Fn::Sub") {
@@ -78,9 +68,7 @@ function iterate(path, parent, propNameOrIndex, obj) {
         else if (path.indexOf("UserData.Fn::Base64") !== -1) {
           parent[propNameOrIndex] = "%%BUCKET_NAME%%-${AWS::Region}";
           const i = parent.__parent.indexOf(parent);
-          parent.__parent[i + 1] =
-            "/%%SOLUTION_NAME%%/%%VERSION%%/asset" +
-            parent.__parent[i + 1].substr(1);
+          parent.__parent[i + 1] = "/%%SOLUTION_NAME%%/%%VERSION%%/asset" + parent.__parent[i + 1].substr(1);
         }
         // Lambdas
         else if (path.indexOf("Properties.Code.S3Bucket")) {

@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not use
  * this file except in compliance with the License. A copy of the License is located at
@@ -11,12 +11,13 @@
  * License for the specific language governing permissions and limitations under the License.
  **/
 
-import { CfnParameter, Construct, CfnOutput, Fn, CfnResource, CfnDeletionPolicy } from "@aws-cdk/core"
-import { CfnSubnet, CfnEIP } from "@aws-cdk/aws-ec2"
-import { CfnLoadBalancer, CfnTargetGroup, CfnListener, TargetType, Protocol } from "@aws-cdk/aws-elasticloadbalancingv2"
-import { AutoScalingGroup } from "@aws-cdk/aws-autoscaling"
+import { CfnParameter, CfnOutput, Fn, CfnResource, CfnDeletionPolicy } from "aws-cdk-lib/core"
+import { CfnSubnet, CfnEIP } from "aws-cdk-lib/aws-ec2"
+import { CfnLoadBalancer, CfnTargetGroup, CfnListener, TargetType, Protocol } from "aws-cdk-lib/aws-elasticloadbalancingv2"
+import { AutoScalingGroup } from "aws-cdk-lib/aws-autoscaling"
 import { Condition, createCondition, createParameter } from "./Utils"
 import { CustomResourcesProvider } from "./CustomResourcesProvider"
+import { Construct } from "constructs"
 
 export interface NLBServiceConfig {
   // CFN Parameters
@@ -140,20 +141,20 @@ export class NLBService extends Construct {
 
   /** Helper to get the NLB EIP in Zone 1 */
   get ip1(): string {
-    return (Fn.conditionIf(
+    return Fn.conditionIf(
       this.config.allocateEipForNlb1Condition.logicalId,
       this.nlbEips[0].ref,
       this.config.nlb1EipAllocationIdParam.valueAsString
-    ) as unknown) as string
+    ) as unknown as string
   }
 
   /** Helper to get the NLB EIP in Zone 2 */
   get ip2(): string {
-    return (Fn.conditionIf(
+    return Fn.conditionIf(
       this.config.allocateEipForNlb2Condition.logicalId,
       this.nlbEips[1].ref,
       this.config.nlb2EipAllocationIdParam.valueAsString
-    ) as unknown) as string
+    ) as unknown as string
   }
 
   /** Helper for adding an conditional IP target */
@@ -206,18 +207,18 @@ export class NLBService extends Construct {
       type: "network",
       subnetMappings: props.subnets.map((subnet, index) => ({
         subnetId: subnet.ref,
-        allocationId: (Fn.conditionIf(
+        allocationId: Fn.conditionIf(
           index == 0 ? this.config.allocateEipForNlb1Condition.logicalId : this.config.allocateEipForNlb2Condition.logicalId,
           eips[index].attrAllocationId,
           index == 0 ? this.config.nlb1EipAllocationIdParam.valueAsString : this.config.nlb2EipAllocationIdParam.valueAsString
-        ) as unknown) as string
+        ) as unknown as string
       })),
       loadBalancerAttributes: [{ key: "load_balancing.cross_zone.enabled", value: "true" }],
       tags: [
         { key: "Name", value: Fn.ref("AWS::StackName") },
         // conditional reaper dependencies
-        { key: "Reaper1", value: (Fn.conditionIf(this.config.allocateEipForNlb1Condition.logicalId, reapers[0].ref, "n/a") as unknown) as string },
-        { key: "Reaper2", value: (Fn.conditionIf(this.config.allocateEipForNlb2Condition.logicalId, reapers[1].ref, "n/a") as unknown) as string }
+        { key: "Reaper1", value: Fn.conditionIf(this.config.allocateEipForNlb1Condition.logicalId, reapers[0].ref, "n/a") as unknown as string },
+        { key: "Reaper2", value: Fn.conditionIf(this.config.allocateEipForNlb2Condition.logicalId, reapers[1].ref, "n/a") as unknown as string }
       ]
     })
 
@@ -243,7 +244,7 @@ export class NLBService extends Construct {
   }
 
   get healthCheckPort(): string {
-    return (Fn.conditionIf(this.config.isUdp.logicalId, 1195, 1194) as unknown) as string
+    return Fn.conditionIf(this.config.isUdp.logicalId, 1195, 1194) as unknown as string
   }
 
   /** Setup the listener */

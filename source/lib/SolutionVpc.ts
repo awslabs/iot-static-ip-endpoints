@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not use
  * this file except in compliance with the License. A copy of the License is located at
@@ -14,7 +14,7 @@
 import { createCondition, createParameter } from "./Utils"
 import { NAT } from "./NAT"
 import { SolutionSubnet } from "./SolutionSubnet"
-import { CfnParameter, Construct, Fn, ConstructNode, ResourceEnvironment, Stack, IDependable, CfnCustomResource } from "@aws-cdk/core"
+import { CfnParameter, Fn, ResourceEnvironment, Stack, CfnCustomResource, RemovalPolicy } from "aws-cdk-lib/core"
 import {
   IVpc,
   CfnVPC,
@@ -37,11 +37,14 @@ import {
   InterfaceVpcEndpointOptions,
   InterfaceVpcEndpoint,
   FlowLog,
-  FlowLogOptions
-} from "@aws-cdk/aws-ec2"
-import { Role, ServicePrincipal } from "@aws-cdk/aws-iam"
+  FlowLogOptions,
+  ClientVpnEndpoint,
+  ClientVpnEndpointOptions
+} from "aws-cdk-lib/aws-ec2"
+import { Role, ServicePrincipal } from "aws-cdk-lib/aws-iam"
 import { Logs } from "./Logs"
 import { CustomResourcesProvider } from "./CustomResourcesProvider"
+import { Construct, IDependable, Node } from "constructs"
 
 export interface SolutionVpcConfig {
   readonly vpcCidrParam: CfnParameter
@@ -78,6 +81,17 @@ export class SolutionVpc extends Construct implements IVpc {
     this.flowLog = this.setupFlowLogs()
     this.publicSubnetsSelection = this.setupPublicSubnetSelection()
     this.privateSubnetsSelection = this.setupPrivateSubnetSelection()
+  }
+
+  public get vpcArn(): string {
+    return `arn:aws:ec2:${Fn.ref("AWS::Region")}:${Fn.ref("AWS::Account")}:vpc/${this.cfnVpc.ref}`
+  }
+
+  addClientVpnEndpoint(_id: string, _options: ClientVpnEndpointOptions): ClientVpnEndpoint {
+    throw new Error("Method not implemented.")
+  }
+  applyRemovalPolicy(policy: RemovalPolicy): void {
+    this.cfnVpc.applyRemovalPolicy(policy)
   }
 
   private setupVpc(): CfnVPC {
@@ -146,7 +160,7 @@ export class SolutionVpc extends Construct implements IVpc {
     })
 
     // wait for IGW attachment...
-    this.cfnPublicSubnets.forEach((subnet) => subnet.addDependsOn(igwAttach))
+    this.cfnPublicSubnets.forEach((subnet) => subnet.addDependency(igwAttach))
 
     return igw
   }
@@ -190,7 +204,7 @@ export class SolutionVpc extends Construct implements IVpc {
       logGroupName: Logs.logGroupName(this, "flowlogs"),
       maxAggregationInterval: 60
     })
-    flowLog.addDependsOn(Logs.logGroup(this, "flowlogs"))
+    flowLog.addDependency(Logs.logGroup(this, "flowlogs"))
     cond.applyTo(flowLog)
     return flowLog
   }
@@ -320,13 +334,16 @@ export class SolutionVpc extends Construct implements IVpc {
       associateNetworkAcl(): void {
         throw new Error("not implemented")
       },
-      get node(): ConstructNode {
-        throw new Error("not implemented")
+      get node(): Node {
+        return pri.node // this is only used at synth-time
       },
       get env(): ResourceEnvironment {
         throw new Error("not implemented")
       },
       get stack(): Stack {
+        throw new Error("not implemented")
+      },
+      applyRemovalPolicy(_policy): void {
         throw new Error("not implemented")
       }
     }
@@ -351,7 +368,7 @@ export class SolutionVpc extends Construct implements IVpc {
   }
 
   get vpcCidrBlock(): string {
-    return this.cfnVpc.cidrBlock
+    return this.cfnVpc.cidrBlock!
   }
 
   get stack(): Stack {

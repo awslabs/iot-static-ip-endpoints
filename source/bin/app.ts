@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import * as cdk from "@aws-cdk/core"
+import * as cdk from "aws-cdk-lib/core"
 import { IoTStaticEndpointsStack } from "../lib/IoTStaticEndpointsStack"
 import * as Constants from "../lib/Constants"
 

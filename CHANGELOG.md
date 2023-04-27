@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2023-04-26
+
+- Updated source from AWS CDK v1 to AWS CDK v2
+- Updated to latest npm dependency versions
+- Updated to latest Python cryptography module version
+
 ## [1.0.0] - 2021-02-01
 
 ### Added

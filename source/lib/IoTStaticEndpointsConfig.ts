@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not use
  * this file except in compliance with the License. A copy of the License is located at
@@ -11,8 +11,10 @@
  * License for the specific language governing permissions and limitations under the License.
  **/
 
+import { Construct } from "constructs"
 import { createParameter } from "./Utils"
-import { Construct, CfnParameter, Stack } from "@aws-cdk/core"
+import { CfnParameter, Stack } from "aws-cdk-lib/core"
+import { SOLUTION_DISPLAY_NAME } from "./Constants"
 
 /**
  * Configures the stack with our parameters, conditions, and other metadata.
@@ -130,7 +132,7 @@ export class IoTStaticEndpointsConfig extends Construct {
 
   private getReadmeMetadata(): { [index: string]: unknown } {
     return {
-      Name: "%%SOLUTION_DISPLAY_NAME%%",
+      Name: SOLUTION_DISPLAY_NAME,
       License: "Apache 2.0"
     }
   }

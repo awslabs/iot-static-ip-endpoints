@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not use
  * this file except in compliance with the License. A copy of the License is located at
@@ -11,15 +11,16 @@
  * License for the specific language governing permissions and limitations under the License.
  **/
 
-import * as cdk from "@aws-cdk/core"
-import * as ec2 from "@aws-cdk/aws-ec2"
+import * as cdk from "aws-cdk-lib/core"
+import * as ec2 from "aws-cdk-lib/aws-ec2"
 import { SolutionVpc } from "../lib/SolutionVpc"
 import { NLBService } from "../lib/NLBService"
 import { SolutionSubnet } from "../lib/SolutionSubnet"
 import { NAT } from "../lib/NAT"
 import { CustomResourcesProvider } from "../lib/CustomResourcesProvider"
+import { Construct } from "constructs"
 
-export function nat(scope: cdk.Construct, cfnprovider: CustomResourcesProvider): NAT {
+export function nat(scope: Construct, cfnprovider: CustomResourcesProvider): NAT {
   return new NAT(scope, "NAT", {
     creationExpression: cdk.Fn.conditionEquals("true", "true"),
     cfnprovider: cfnprovider,
@@ -28,15 +29,15 @@ export function nat(scope: cdk.Construct, cfnprovider: CustomResourcesProvider):
   })
 }
 
-export function cfnprovider(scope: cdk.Construct): CustomResourcesProvider {
+export function cfnprovider(scope: Construct): CustomResourcesProvider {
   return new CustomResourcesProvider(scope, "CustomResourcesProvider")
 }
 
-export function vpc(scope: cdk.Construct, cfnprovider: CustomResourcesProvider): SolutionVpc {
+export function vpc(scope: Construct, cfnprovider: CustomResourcesProvider): SolutionVpc {
   return new SolutionVpc(scope, "Vpc", cfnprovider)
 }
 
-export function nlb(scope: cdk.Construct, vpc: SolutionVpc, cfnprovider: CustomResourcesProvider): NLBService {
+export function nlb(scope: Construct, vpc: SolutionVpc, cfnprovider: CustomResourcesProvider): NLBService {
   return new NLBService(scope, "NLB", {
     vpcId: vpc.vpcId,
     subnets: vpc.cfnPublicSubnets,
@@ -46,7 +47,7 @@ export function nlb(scope: cdk.Construct, vpc: SolutionVpc, cfnprovider: CustomR
     cfnprovider: cfnprovider
   })
 }
-export function subnet(scope: cdk.Construct): SolutionSubnet {
+export function subnet(scope: Construct): SolutionSubnet {
   const vpc = new ec2.CfnVPC(scope, "Vpc", {
     cidrBlock: "10.100.0.0/16"
   })

@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not use
  * this file except in compliance with the License. A copy of the License is located at
@@ -12,19 +12,20 @@
  **/
 
 import * as path from "path"
-import * as cdk from "@aws-cdk/core"
-import * as iam from "@aws-cdk/aws-iam"
-import * as ec2 from "@aws-cdk/aws-ec2"
-import * as lambda from "@aws-cdk/aws-lambda"
+import * as cdk from "aws-cdk-lib/core"
+import * as iam from "aws-cdk-lib/aws-iam"
+import * as ec2 from "aws-cdk-lib/aws-ec2"
+import * as lambda from "aws-cdk-lib/aws-lambda"
 import { PYTHON_LAMBDA_RUNTIME } from "./Constants"
 import { Logs } from "./Logs"
 import { Condition } from "./Utils"
+import { Construct } from "constructs"
 
-export class CustomResourcesProvider extends cdk.Construct {
+export class CustomResourcesProvider extends Construct {
   private readonly serviceToken: string
   private counter = 0
 
-  constructor(scope: cdk.Construct, id: string) {
+  constructor(scope: Construct, id: string) {
     super(scope, id)
 
     const role = new iam.Role(this, "Role", {
@@ -99,7 +100,7 @@ export class CustomResourcesProvider extends cdk.Construct {
       runtime: PYTHON_LAMBDA_RUNTIME,
       timeout: cdk.Duration.minutes(10),
       handler: "CustomResourcesProvider.handler",
-      code: lambda.Code.asset(path.join("assets", "lambda")),
+      code: lambda.Code.fromAsset(path.join("assets", "lambda")),
       description: `${cdk.Fn.ref("AWS::StackName")} custom CloudFormation resource provider`,
       role: role,
       environment: {
@@ -119,7 +120,7 @@ export class CustomResourcesProvider extends cdk.Construct {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  create(scope: cdk.Construct, id: string, action: string, properties: { [index: string]: any } = {}): cdk.CfnCustomResource {
+  create(scope: Construct, id: string, action: string, properties: { [index: string]: any } = {}): cdk.CfnCustomResource {
     const res = new cdk.CfnCustomResource(scope, id, {
       serviceToken: this.serviceToken
     })
@@ -130,7 +131,7 @@ export class CustomResourcesProvider extends cdk.Construct {
     return res
   }
 
-  createConditionalReaper(scope: cdk.Construct, eip: ec2.CfnEIP, condition: Condition): cdk.CfnCustomResource {
+  createConditionalReaper(scope: Construct, eip: ec2.CfnEIP, condition: Condition): cdk.CfnCustomResource {
     if (!condition.cfnCondition.expression) {
       throw new Error("missing condition expression")
     }

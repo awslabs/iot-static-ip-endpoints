@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not use
  * this file except in compliance with the License. A copy of the License is located at
@@ -11,13 +11,14 @@
  * License for the specific language governing permissions and limitations under the License.
  **/
 
-import * as cdk from "@aws-cdk/core"
-import * as logs from "@aws-cdk/aws-logs"
-import * as iam from "@aws-cdk/aws-iam"
-import * as lambda from "@aws-cdk/aws-lambda"
-import { Fn, CfnDeletionPolicy } from "@aws-cdk/core"
+import * as cdk from "aws-cdk-lib/core"
+import * as logs from "aws-cdk-lib/aws-logs"
+import * as iam from "aws-cdk-lib/aws-iam"
+import * as lambda from "aws-cdk-lib/aws-lambda"
+import { Fn, CfnDeletionPolicy } from "aws-cdk-lib/core"
 import { createParameter, Condition, createCondition } from "./Utils"
 import { CustomResourcesProvider } from "./CustomResourcesProvider"
+import { Construct } from "constructs"
 
 const logGroups: { [index: string]: logs.CfnLogGroup } = {}
 let counter = 0
@@ -27,11 +28,11 @@ let isDeleteLogs: Condition | null = null
 let cfnprovider: CustomResourcesProvider | null = null
 
 export class Logs {
-  static initLambdaLogGroup(scope: cdk.Construct, func: lambda.Function, role: iam.IRole): logs.CfnLogGroup {
+  static initLambdaLogGroup(scope: Construct, func: lambda.Function, role: iam.IRole): logs.CfnLogGroup {
     if (!logGroups[`/aws/lambda/${func.functionName}`]) {
       const group = new logs.CfnLogGroup(scope, `LogGroup${++counter}`, {
         logGroupName: `/aws/lambda/${func.functionName}`,
-        retentionInDays: (Logs.logRetentionDays(scope) as unknown) as number
+        retentionInDays: Logs.logRetentionDays(scope) as unknown as number
       })
       group.cfnOptions.deletionPolicy = CfnDeletionPolicy.RETAIN
       logGroups[`/aws/lambda/${func.functionName}`] = group
@@ -46,7 +47,7 @@ export class Logs {
       `arn:${Fn.ref("AWS::Partition")}:logs:${Fn.ref("AWS::Region")}:${Fn.ref("AWS::AccountId")}:log-group:${Fn.ref("AWS::StackName")}/*`
     ]
 
-    role.addToPolicy(
+    role.addToPrincipalPolicy(
       new iam.PolicyStatement({
         actions: ["logs:CreateLogStream", "logs:PutLogEvents", "logs:DescribeLogGroups", "logs:DescribeLogStreams"],
         effect: iam.Effect.ALLOW,
@@ -63,7 +64,7 @@ export class Logs {
     cfnprovider = p
   }
 
-  private static setupReaper(scope: cdk.Construct, logGroup: logs.CfnLogGroup): void {
+  private static setupReaper(scope: Construct, logGroup: logs.CfnLogGroup): void {
     if (!cfnprovider) {
       throw new Error("Missing cfnprovider")
     }
@@ -73,16 +74,16 @@ export class Logs {
     this.deleteCondition(scope).applyTo(reaper)
   }
 
-  static logGroupName(scope: cdk.Construct, name: string): string {
+  static logGroupName(scope: Construct, name: string): string {
     return Logs.logGroup(scope, name).logGroupName || "%%wont-happen%"
   }
 
-  static logGroup(scope: cdk.Construct, name: string): logs.CfnLogGroup {
+  static logGroup(scope: Construct, name: string): logs.CfnLogGroup {
     if (!logGroups[name]) {
       logGroups[name] = new logs.CfnLogGroup(scope, `LogGroup${++counter}`, {
         // Use portion of StackId UUID to create unique path for log groups
         logGroupName: `${Fn.ref("AWS::StackName")}/${Fn.select(0, Fn.split("-", Fn.select(2, Fn.split("/", Fn.ref("AWS::StackId")))))}/${name}`,
-        retentionInDays: (Logs.logRetentionDays(scope) as unknown) as number
+        retentionInDays: Logs.logRetentionDays(scope) as unknown as number
       })
       logGroups[name].cfnOptions.deletionPolicy = CfnDeletionPolicy.RETAIN
     }
@@ -95,7 +96,7 @@ export class Logs {
       `arn:${Fn.ref("AWS::Partition")}:logs:${Fn.ref("AWS::Region")}:${Fn.ref("AWS::AccountId")}:log-group:${Fn.ref("AWS::StackName")}/*`
     ]
 
-    role.addToPolicy(
+    role.addToPrincipalPolicy(
       new iam.PolicyStatement({
         actions: ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents", "logs:DescribeLogGroups", "logs:DescribeLogStreams"],
         effect: iam.Effect.ALLOW,
@@ -104,7 +105,7 @@ export class Logs {
     )
   }
 
-  static logRetentionDays(scope: cdk.Construct): string {
+  static logRetentionDays(scope: Construct): string {
     if (!retentionParam) {
       retentionParam = createParameter(scope, "LogRetentionDays", {
         type: "String",
@@ -115,7 +116,7 @@ export class Logs {
     return retentionParam.valueAsString
   }
 
-  static deleteCondition(scope: cdk.Construct): Condition {
+  static deleteCondition(scope: Construct): Condition {
     if (!deletionPolicyParam) {
       deletionPolicyParam = createParameter(scope, "CWLRetentionPolicy", {
         type: "String",

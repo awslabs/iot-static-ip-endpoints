@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not use
  * this file except in compliance with the License. A copy of the License is located at
@@ -11,9 +11,10 @@
  * License for the specific language governing permissions and limitations under the License.
  **/
 
-import * as cdk from "@aws-cdk/core"
-import * as cloudwatch from "@aws-cdk/aws-cloudwatch"
-import { Aspects } from "@aws-cdk/core"
+import * as cdk from "aws-cdk-lib"
+import { Construct, IConstruct } from "constructs"
+import * as cloudwatch from "aws-cdk-lib/aws-cloudwatch"
+import { Aspects } from "aws-cdk-lib/core"
 
 export interface BasicGraphProps {
   /** Graph Title */
@@ -41,7 +42,7 @@ export interface BasicGraphProps {
  * @param name
  * @param props
  */
-export function createParameter(scope: cdk.Construct, name: string, props: cdk.CfnParameterProps): cdk.CfnParameter {
+export function createParameter(scope: Construct, name: string, props: cdk.CfnParameterProps): cdk.CfnParameter {
   const p = new cdk.CfnParameter(scope, name, props)
   p.overrideLogicalId(name)
   // warn for parameters missing input validation
@@ -57,7 +58,7 @@ export function createParameter(scope: cdk.Construct, name: string, props: cdk.C
  * @param name
  * @param props
  */
-export function createCondition(scope: cdk.Construct, name: string, props: cdk.CfnConditionProps): Condition {
+export function createCondition(scope: Construct, name: string, props: cdk.CfnConditionProps): Condition {
   const p = new cdk.CfnCondition(scope, name, props)
   p.overrideLogicalId(name)
   return new Condition(p)
@@ -75,7 +76,7 @@ export function createBasicGraphWidget(props: BasicGraphProps): cloudwatch.IWidg
       new cloudwatch.Metric({
         namespace: namespace,
         metricName: props.metricName[index],
-        dimensions: props.dimensions[index],
+        dimensionsMap: props.dimensions[index],
         statistic: props.stat[index],
         period: cdk.Duration.seconds(10)
       })
@@ -106,12 +107,12 @@ export class Condition {
     return this.cfnCondition.logicalId
   }
 
-  applyTo(node: cdk.IConstruct | cdk.CfnResource, force = false): void {
+  applyTo(node: IConstruct, force = false): void {
     this.applyCondition(this.cfnCondition, force, node)
     Aspects.of(node).add({ visit: this.applyCondition.bind(this, this.cfnCondition, force) })
   }
 
-  private applyCondition(condition: cdk.CfnCondition, force: boolean, node: cdk.IConstruct | cdk.CfnResource) {
+  private applyCondition(condition: cdk.CfnCondition, force: boolean, node: IConstruct | cdk.CfnResource) {
     if (node instanceof cdk.CfnResource) {
       // L1 Constructs
       if (force || !node.cfnOptions.condition) {

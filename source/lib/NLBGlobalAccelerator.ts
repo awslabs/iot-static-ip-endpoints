@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not use
  * this file except in compliance with the License. A copy of the License is located at
@@ -11,10 +11,11 @@
  * License for the specific language governing permissions and limitations under the License.
  **/
 
-import { CfnParameter, Construct, Fn, CfnOutput, Tags, CfnCustomResource } from "@aws-cdk/core"
-import { Accelerator, Listener, EndpointGroup, CfnAccelerator, ConnectionProtocol, EndpointConfiguration } from "@aws-cdk/aws-globalaccelerator"
+import { CfnParameter, Fn, CfnOutput, Tags, CfnCustomResource } from "aws-cdk-lib/core"
+import { Accelerator, Listener, CfnAccelerator, ConnectionProtocol, CfnEndpointGroup } from "aws-cdk-lib/aws-globalaccelerator"
 import { Condition, createCondition, createParameter } from "./Utils"
 import { CustomResourcesProvider } from "./CustomResourcesProvider"
+import { Construct } from "constructs"
 
 export interface NLBGlobalAcceleratorConfig {
   // CFN Parameters
@@ -42,7 +43,7 @@ export interface NLBGlobalAcceleratorProps {
 export class NLBGlobalAccelerator extends Construct {
   readonly accelerator?: Accelerator
   readonly listener?: Listener
-  readonly endpointGroup?: EndpointGroup
+  readonly endpointGroup?: CfnEndpointGroup
   readonly acceleratorIp1?: CfnCustomResource
   readonly acceleratorIp2?: CfnCustomResource
   readonly config: NLBGlobalAcceleratorConfig
@@ -55,21 +56,26 @@ export class NLBGlobalAccelerator extends Construct {
     this.config = this.setupConfig()
 
     // Global Accelerator Setup
-    this.accelerator = new Accelerator(this, "GA", {})
+    this.accelerator = new Accelerator(this, "GA", {
+      // while this probably should not be set this is how v1.0.0 was implemented using CDKv1
+      // CFN update requires no interruption, however since this is a minor release we'll keep
+      // the name the same to avoid any confusion with customers already using accelerators
+      acceleratorName: "GA"
+    })
     const aAccelerator = this.accelerator.node.defaultChild as CfnAccelerator
 
-    aAccelerator.ipAddresses = (Fn.conditionIf(this.config.allocateGaIp1Condition.logicalId, Fn.ref("AWS::NoValue"), [
-      (Fn.conditionIf(
+    aAccelerator.ipAddresses = Fn.conditionIf(this.config.allocateGaIp1Condition.logicalId, Fn.ref("AWS::NoValue"), [
+      Fn.conditionIf(
         this.config.allocateGaIp1Condition.logicalId,
         Fn.ref("AWS::NoValue"),
         this.config.ipAddress1Param.valueAsString
-      ) as unknown) as string,
-      (Fn.conditionIf(
+      ) as unknown as string,
+      Fn.conditionIf(
         this.config.allocateGaIp2Condition.logicalId,
         Fn.ref("AWS::NoValue"),
         this.config.ipAddress2Param.valueAsString
-      ) as unknown) as string
-    ]) as unknown) as string[]
+      ) as unknown as string
+    ]) as unknown as string[]
 
     Tags.of(this.accelerator).add("StackName", Fn.ref("AWS::StackName"))
 
@@ -79,13 +85,10 @@ export class NLBGlobalAccelerator extends Construct {
       protocol: props.protocol as ConnectionProtocol
     })
 
-    const eg = (this.endpointGroup = new EndpointGroup(this, "GAGroup", {
-      listener: this.listener
-    }))
-
-    new EndpointConfiguration(this, "EndpointEIP1", {
-      endpointId: props.nlbArn,
-      endpointGroup: eg
+    this.endpointGroup = new CfnEndpointGroup(this, "GAGroup", {
+      listenerArn: this.listener.listenerArn,
+      endpointGroupRegion: Fn.ref("AWS::Region"),
+      endpointConfigurations: [{ endpointId: props.nlbArn }]
     })
 
     // GA IP outputs
@@ -145,19 +148,19 @@ export class NLBGlobalAccelerator extends Construct {
 
   /** Helper to get the Global Accelerator first IP address  */
   get ip1(): string {
-    return (Fn.conditionIf(
+    return Fn.conditionIf(
       this.config.allocateGaIp1Condition.logicalId,
       this.acceleratorIp1?.ref,
       this.config.ipAddress1Param.valueAsString
-    ) as unknown) as string
+    ) as unknown as string
   }
 
   /** Helper to get the Global Accelerator second IP address  */
   get ip2(): string {
-    return (Fn.conditionIf(
+    return Fn.conditionIf(
       this.config.allocateGaIp2Condition.logicalId,
       this.acceleratorIp2?.ref,
       this.config.ipAddress2Param.valueAsString
-    ) as unknown) as string
+    ) as unknown as string
   }
 }

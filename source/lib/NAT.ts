@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may not use
  * this file except in compliance with the License. A copy of the License is located at
@@ -11,10 +11,11 @@
  * License for the specific language governing permissions and limitations under the License.
  **/
 
-import { CfnParameter, ICfnConditionExpression, Construct, CfnCustomResource, Fn, CfnDeletionPolicy } from "@aws-cdk/core"
-import { CfnEIP, CfnNatGateway, CfnRoute } from "@aws-cdk/aws-ec2"
+import { CfnParameter, ICfnConditionExpression, CfnCustomResource, Fn, CfnDeletionPolicy } from "aws-cdk-lib/core"
+import { CfnEIP, CfnNatGateway, CfnRoute } from "aws-cdk-lib/aws-ec2"
 import { Condition, createParameter, createCondition } from "./Utils"
 import { CustomResourcesProvider } from "./CustomResourcesProvider"
+import { Construct } from "constructs"
 
 export interface NATConfig {
   /** The EIP allocation ID parameter which may be specified during stack creation */
@@ -132,18 +133,18 @@ export class NAT extends Construct {
     return new CfnNatGateway(this, "Gateway", {
       subnetId: props.subnetId,
       // use the allocated, or passed in EIP allocation id
-      allocationId: (Fn.conditionIf(
+      allocationId: Fn.conditionIf(
         this.config.allocateEipCondition.logicalId,
         this.eip.attrAllocationId,
         this.config.eipAllocationIdParam.valueAsString
-      ) as unknown) as string,
+      ) as unknown as string,
       tags: [
         { key: "Name", value: `${Fn.ref("AWS::StackName")}-${id}` },
         {
           // this creates a conditional dependency on the NAT EIP Reaper
           // we can't use Fn::If in DependsOn, so we'll do it as a Tag instead which acomplishes the same dependency
           key: "Reaper",
-          value: (Fn.conditionIf(this.config.allocateEipCondition.logicalId, this.reaper.ref, "n/a") as unknown) as string
+          value: Fn.conditionIf(this.config.allocateEipCondition.logicalId, this.reaper.ref, "n/a") as unknown as string
         }
       ]
     })
