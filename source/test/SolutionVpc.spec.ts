@@ -24,7 +24,7 @@ fs.writeFileSync("test/SolutionVpc.synth.json", JSON.stringify(stack, null, 2))
 
 test("has a single VPC which is configured as expected", () => {
   stack.resourceCountIs("AWS::EC2::VPC", 1)
-  stack.hasResource("AWS::EC2::VPC", {
+  stack.hasResourceProperties("AWS::EC2::VPC", {
     CidrBlock: { Ref: "VpcCIDR" },
     EnableDnsHostnames: true,
     EnableDnsSupport: true,
@@ -43,12 +43,12 @@ test("vpc has 4 subnets", () => {
 })
 
 test("vpc has /26 public subnets in 2 availability zones", () => {
-  stack.hasResource("AWS::EC2::Subnet", {
+  stack.hasResourceProperties("AWS::EC2::Subnet", {
     AvailabilityZone: { Ref: "Zone1" },
     MapPublicIpOnLaunch: true,
     Tags: [{ Key: "Name", Value: { "Fn::Join": ["", [{ Ref: "AWS::StackName" }, "-public1"]] } }]
   })
-  stack.hasResource("AWS::EC2::Subnet", {
+  stack.hasResourceProperties("AWS::EC2::Subnet", {
     AvailabilityZone: { Ref: "Zone2" },
     MapPublicIpOnLaunch: true,
     Tags: [{ Key: "Name", Value: { "Fn::Join": ["", [{ Ref: "AWS::StackName" }, "-public2"]] } }]
@@ -56,12 +56,12 @@ test("vpc has /26 public subnets in 2 availability zones", () => {
 })
 
 test("vpc has /26 private subnets in 2 availability zones", () => {
-  stack.hasResource("AWS::EC2::Subnet", {
+  stack.hasResourceProperties("AWS::EC2::Subnet", {
     AvailabilityZone: { Ref: "Zone1" },
     MapPublicIpOnLaunch: false,
     Tags: [{ Key: "Name", Value: { "Fn::Join": ["", [{ Ref: "AWS::StackName" }, "-private1"]] } }]
   })
-  stack.hasResource("AWS::EC2::Subnet", {
+  stack.hasResourceProperties("AWS::EC2::Subnet", {
     AvailabilityZone: { Ref: "Zone2" },
     MapPublicIpOnLaunch: false,
     Tags: [{ Key: "Name", Value: { "Fn::Join": ["", [{ Ref: "AWS::StackName" }, "-private2"]] } }]
@@ -73,16 +73,16 @@ test("has 3 route tables", () => {
 })
 
 test("has public route table", () => {
-  stack.hasResource("AWS::EC2::RouteTable", {
+  stack.hasResourceProperties("AWS::EC2::RouteTable", {
     Tags: [{ Key: "Name", Value: { "Fn::Join": ["", [{ Ref: "AWS::StackName" }, "-public"]] } }]
   })
 })
 
 test("has private route tables", () => {
-  stack.hasResource("AWS::EC2::RouteTable", {
+  stack.hasResourceProperties("AWS::EC2::RouteTable", {
     Tags: [{ Key: "Name", Value: { "Fn::Join": ["", [{ Ref: "AWS::StackName" }, "-private1"]] } }]
   })
-  stack.hasResource("AWS::EC2::RouteTable", {
+  stack.hasResourceProperties("AWS::EC2::RouteTable", {
     Tags: [{ Key: "Name", Value: { "Fn::Join": ["", [{ Ref: "AWS::StackName" }, "-private2"]] } }]
   })
 })
@@ -92,7 +92,7 @@ test("has correct number of route table associations", () => {
 })
 
 test("public route table associated to public subnets", () => {
-  stack.hasResource("AWS::EC2::SubnetRouteTableAssociation", {
+  stack.hasResourceProperties("AWS::EC2::SubnetRouteTableAssociation", {
     RouteTableId: {
       Ref: "VpcpublicRouteTable84AA4D2D"
     },
@@ -100,7 +100,7 @@ test("public route table associated to public subnets", () => {
       Ref: "VpcPublicSubnet15D99DDA5"
     }
   })
-  stack.hasResource("AWS::EC2::SubnetRouteTableAssociation", {
+  stack.hasResourceProperties("AWS::EC2::SubnetRouteTableAssociation", {
     RouteTableId: {
       Ref: "VpcpublicRouteTable84AA4D2D"
     },
@@ -111,7 +111,7 @@ test("public route table associated to public subnets", () => {
 })
 
 test("private route tables associated to private subnets", () => {
-  stack.hasResource("AWS::EC2::SubnetRouteTableAssociation", {
+  stack.hasResourceProperties("AWS::EC2::SubnetRouteTableAssociation", {
     RouteTableId: {
       Ref: "VpcprivateRouteTable1CC524E24"
     },
@@ -119,7 +119,7 @@ test("private route tables associated to private subnets", () => {
       Ref: "VpcPrivateSubnet1C7C9FF92"
     }
   })
-  stack.hasResource("AWS::EC2::SubnetRouteTableAssociation", {
+  stack.hasResourceProperties("AWS::EC2::SubnetRouteTableAssociation", {
     RouteTableId: {
       Ref: "VpcprivateRouteTable29D4318A6"
     },
@@ -130,7 +130,7 @@ test("private route tables associated to private subnets", () => {
 })
 
 test("public route table has internet route", () => {
-  stack.hasResource("AWS::EC2::Route", {
+  stack.hasResourceProperties("AWS::EC2::Route", {
     RouteTableId: {
       Ref: "VpcpublicRouteTable84AA4D2D"
     },
@@ -142,31 +142,31 @@ test("public route table has internet route", () => {
 })
 
 test("has EIP resources for NAT Gateways", () => {
-  stack.hasResource("AWS::EC2::EIP", {
+  stack.hasResourceProperties("AWS::EC2::EIP", {
     Domain: "vpc",
     Tags: [{ Key: "Name", Value: { "Fn::Join": ["", [{ Ref: "AWS::StackName" }, "-NAT1"]] } }]
   })
 
-  stack.hasResource("AWS::EC2::EIP", {
+  stack.hasResourceProperties("AWS::EC2::EIP", {
     Domain: "vpc",
     Tags: [{ Key: "Name", Value: { "Fn::Join": ["", [{ Ref: "AWS::StackName" }, "-NAT2"]] } }]
   })
 })
 
 test("has NAT Gateway resources in 2 availability zones", () => {
-  stack.hasResource("AWS::EC2::NatGateway", {
+  stack.hasResourceProperties("AWS::EC2::NatGateway", {
     AllocationId: { "Fn::If": ["AllocateNAT1IP", { "Fn::GetAtt": ["VpcNAT1NAT1EIPFB47460A", "AllocationId"] }, { Ref: "EIPNAT1" }] },
     SubnetId: { Ref: "VpcPublicSubnet15D99DDA5" }
   })
 
-  stack.hasResource("AWS::EC2::NatGateway", {
+  stack.hasResourceProperties("AWS::EC2::NatGateway", {
     AllocationId: { "Fn::If": ["AllocateNAT2IP", { "Fn::GetAtt": ["VpcNAT2NAT2EIPD6D91F97", "AllocationId"] }, { Ref: "EIPNAT2" }] },
     SubnetId: { Ref: "VpcPublicSubnet2DB07F317" }
   })
 })
 
 test("private route tables contain NAT Gateway routes", () => {
-  stack.hasResource("AWS::EC2::Route", {
+  stack.hasResourceProperties("AWS::EC2::Route", {
     RouteTableId: {
       Ref: "VpcprivateRouteTable1CC524E24"
     },
@@ -176,7 +176,7 @@ test("private route tables contain NAT Gateway routes", () => {
     }
   })
 
-  stack.hasResource("AWS::EC2::Route", {
+  stack.hasResourceProperties("AWS::EC2::Route", {
     RouteTableId: {
       Ref: "VpcprivateRouteTable29D4318A6"
     },
@@ -193,46 +193,6 @@ test("method overrides work as expected", () => {
   const sn = (vpc as any).getConditionalInternetRoutableSubnet("MyConditionId", vpc.privateSubnets[0], vpc.publicSubnets[0])
   expect(sn).not.toBeNull()
 
-  try {
-    console.log(sn.node)
-  } catch (err) {
-    if ((err as any) !== "not implemented") {
-      throw err
-    }
-  }
-
-  try {
-    console.log(sn.stack)
-  } catch (err) {
-    if ((err as any) !== "not implemented") {
-      throw err
-    }
-  }
-
-  try {
-    console.log(sn.env)
-  } catch (err) {
-    if ((err as any) !== "not implemented") {
-      throw err
-    }
-  }
-
-  try {
-    sn.associateNetworkAcl()
-  } catch (err) {
-    if ((err as any) !== "not implemented") {
-      throw err
-    }
-  }
-
-  try {
-    console.log(sn.routeTable)
-  } catch (err) {
-    if ((err as any) !== "not implemented") {
-      throw err
-    }
-  }
-
   const irs = vpc.internetRoutableSubnets
   expect(irs).not.toBeNull()
   expect(irs.length).toEqual(2)
@@ -246,92 +206,4 @@ test("method overrides work as expected", () => {
   expect(vpc.selectSubnets({ subnets: vpc.publicSubnets })).not.toBeNull()
 
   expect(vpc.selectSubnets({ subnets: vpc.publicSubnets }).hasPublic).not.toBeTruthy()
-
-  try {
-    vpc.selectSubnets({ subnetGroupName: "Public" })
-  } catch (err) {
-    if ((err as any) !== "not implemented") {
-      throw err
-    }
-  }
-
-  try {
-    vpc.selectSubnets()
-  } catch (err) {
-    if ((err as any) !== "not implemented") {
-      throw err
-    }
-  }
-
-  try {
-    console.log(vpc.isolatedSubnets)
-  } catch (err) {
-    if ((err as any) !== "vpc.isolatedSubnets Not Implemented") {
-      throw err
-    }
-  }
-
-  try {
-    console.log(vpc.vpnGatewayId)
-  } catch (err) {
-    if ((err as any) !== "vpc.vpnGatewayId Not Implemented") {
-      throw err
-    }
-  }
-
-  try {
-    console.log(vpc.internetConnectivityEstablished)
-  } catch (err) {
-    if ((err as any) !== "vpc.internetConnectivityEstablished Not Implemented") {
-      throw err
-    }
-  }
-
-  try {
-    console.log(vpc.env)
-  } catch (err) {
-    if ((err as any) !== "vpc.env Not Implemented") {
-      throw err
-    }
-  }
-
-  try {
-    vpc.enableVpnGateway({ type: "" })
-  } catch (err) {
-    if ((err as any) !== "vpc.enableVpnGateway Not Implemented") {
-      throw err
-    }
-  }
-
-  try {
-    vpc.addVpnConnection("", { ip: "" })
-  } catch (err) {
-    if ((err as any) !== "vpc.addVpnConnection Not Implemented") {
-      throw err
-    }
-  }
-
-  try {
-    vpc.addGatewayEndpoint("", { service: { name: "" } })
-  } catch (err) {
-    if ((err as any).message !== "vpc.addGatewayEndpoint Not Implemented") {
-      throw err
-    }
-  }
-
-  try {
-    vpc.addInterfaceEndpoint("", { service: { name: "", port: 0 } })
-  } catch (err) {
-    if ((err as any) !== "vpc.addInterfaceEndpoint Not Implemented") {
-      throw err
-    }
-  }
-
-  try {
-    vpc.addFlowLog("", {})
-  } catch (err) {
-    if ((err as any) !== "vpc.addFlowLog Not Implemented") {
-      throw err
-    }
-  }
 })

@@ -25,21 +25,46 @@ fs.writeFileSync("test/NLBService.synth.json", JSON.stringify(stack, null, 2))
 
 test("has a single network load balancer configured as expected", () => {
   stack.resourceCountIs("AWS::ElasticLoadBalancingV2::LoadBalancer", 1)
-  stack.hasResource("AWS::ElasticLoadBalancingV2::LoadBalancer", {
-    LoadBalancerAttributes: [{ Key: "load_balancing.cross_zone.enabled", Value: "true" }],
+  stack.hasResourceProperties("AWS::ElasticLoadBalancingV2::LoadBalancer", {
+    LoadBalancerAttributes: [
+      {
+        Key: "load_balancing.cross_zone.enabled",
+        Value: "true"
+      }
+    ],
     Scheme: "internet-facing",
     SubnetMappings: [
       {
         AllocationId: {
-          "Fn::If": ["AllocateNlb1Eip", { "Fn::GetAtt": ["NLBEip1625885A1", "AllocationId"] }, { Ref: "EIPNLB1" }]
+          "Fn::If": [
+            "AllocateNlb1Eip",
+            {
+              "Fn::GetAtt": ["NLBEip1625885A1", "AllocationId"]
+            },
+            {
+              Ref: "EIPNLB1"
+            }
+          ]
         },
-        SubnetId: { Ref: "VpcPublicSubnet15D99DDA5" }
+        SubnetId: {
+          Ref: "VpcPublicSubnet15D99DDA5"
+        }
       },
       {
         AllocationId: {
-          "Fn::If": ["AllocateNlb2Eip", { "Fn::GetAtt": ["NLBEip25B15A9F0", "AllocationId"] }, { Ref: "EIPNLB2" }]
+          "Fn::If": [
+            "AllocateNlb2Eip",
+            {
+              "Fn::GetAtt": ["NLBEip25B15A9F0", "AllocationId"]
+            },
+            {
+              Ref: "EIPNLB2"
+            }
+          ]
         },
-        SubnetId: { Ref: "VpcPublicSubnet2DB07F317" }
+        SubnetId: {
+          Ref: "VpcPublicSubnet2DB07F317"
+        }
       }
     ],
     Type: "network"
@@ -48,7 +73,7 @@ test("has a single network load balancer configured as expected", () => {
 
 test("has a single target group configured as expected", () => {
   stack.resourceCountIs("AWS::ElasticLoadBalancingV2::TargetGroup", 1)
-  stack.hasResource("AWS::ElasticLoadBalancingV2::TargetGroup", {
+  stack.hasResourceProperties("AWS::ElasticLoadBalancingV2::TargetGroup", {
     HealthCheckEnabled: true,
     HealthCheckIntervalSeconds: 10,
     HealthCheckPort: {
@@ -77,7 +102,7 @@ test("has a single target group configured as expected", () => {
 
 test("has a single listener configured as expected", () => {
   stack.resourceCountIs("AWS::ElasticLoadBalancingV2::Listener", 1)
-  stack.hasResource("AWS::ElasticLoadBalancingV2::Listener", {
+  stack.hasResourceProperties("AWS::ElasticLoadBalancingV2::Listener", {
     DefaultActions: [
       {
         TargetGroupArn: {

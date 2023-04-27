@@ -15,6 +15,8 @@
 
 netstat -tulpn | grep ':1194'
 if [[ "$?" != "0" ]]; then
+  # if :1194 is not healthy, kill off socat to ensure health checks fail
+  sudo pkill socat
   exit 1
 fi
 read MESSAGE

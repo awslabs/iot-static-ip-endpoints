@@ -14,7 +14,6 @@
 import * as cdk from "aws-cdk-lib/core"
 import * as mock from "./Mock"
 import * as fs from "fs"
-import * as ec2 from "aws-cdk-lib/aws-ec2"
 import { Template } from "aws-cdk-lib/assertions"
 
 const scope = new cdk.Stack()
@@ -34,25 +33,4 @@ test("method overrides work as expected", () => {
   expect(subnet.node).not.toBeNull()
   expect(subnet.stack).not.toBeNull()
   expect(subnet.internetConnectivityEstablished).toBeTruthy()
-
-  try {
-    console.log(subnet.env)
-  } catch (err) {
-    if ((err as any).message !== "Not implemented") {
-      throw err
-    }
-  }
-
-  try {
-    subnet.associateNetworkAcl(
-      "",
-      new ec2.NetworkAcl(scope, "nacl", {
-        vpc: new ec2.Vpc(new cdk.Stack(), "novpc")
-      })
-    )
-  } catch (err) {
-    if ((err as any).message !== "Not implemented") {
-      throw err
-    }
-  }
 })

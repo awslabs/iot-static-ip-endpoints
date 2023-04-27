@@ -33,7 +33,7 @@ test("has expected resource counts", () => {
 })
 
 test("has expected eip resource", () => {
-  stack.hasResource("AWS::EC2::EIP", {
+  stack.hasResourceProperties("AWS::EC2::EIP", {
     Domain: "vpc",
     Tags: [{ Key: "Name", Value: { "Fn::Join": ["", [{ Ref: "AWS::StackName" }, "-NAT"]] } }]
   })
@@ -44,7 +44,7 @@ test("eip resource uses expected condition", () => {
 })
 
 test("has nat", () => {
-  stack.hasResource("AWS::EC2::NatGateway", {
+  stack.hasResourceProperties("AWS::EC2::NatGateway", {
     AllocationId: { "Fn::If": ["AllocateNATIP", { "Fn::GetAtt": ["NATNATEIPEC65D153", "AllocationId"] }, { Ref: "EIPNAT" }] },
     SubnetId: "subnet-1234",
     Tags: [
@@ -59,7 +59,7 @@ test("NAT uses expected condition", () => {
 })
 
 test("has nat route", () => {
-  stack.hasResource("AWS::EC2::Route", {
+  stack.hasResourceProperties("AWS::EC2::Route", {
     RouteTableId: "rtb-1234",
     DestinationCidrBlock: "0.0.0.0/0",
     NatGatewayId: { Ref: "NATGateway3927D637" }
