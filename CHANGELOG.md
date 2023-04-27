@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated source from AWS CDK v1 to AWS CDK v2
 - Updated to latest npm dependency versions
 - Updated to latest Python cryptography module version
+- Fixed an issue which could cause false-positive health checks in the event of an OpenVPN process crash
 
 ## [1.0.0] - 2021-02-01
 
