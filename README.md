@@ -1,3 +1,6 @@
+# Deprecation Notice
+This AWS Solution has been archived and is no longer maintained by AWS. To discover other solutions, please visit the [AWS Solutions Library](https://aws.amazon.com/solutions/).
+
 # IoT Static IP Endpoints Solution
 
 The IoT Static IP Endpoints Solution provides the capability to route all traffic through a set of static IP addresses to other AWS or Internet services.
